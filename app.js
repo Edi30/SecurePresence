@@ -53,25 +53,43 @@ const supabaseClient = hasSupabaseConfig
 let events = exportedEvents.length > 0 ? exportedEvents : defaultEvents;
 let selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
 let currentUser = loadUser();
+let currentProfile = loadProfile();
+let registeredEventIds = new Set();
+let registrations = [];
 
 const phone = document.querySelector(".phone");
 const loginView = document.getElementById("login-view");
+const profileView = document.getElementById("profile-view");
 const eventsView = document.getElementById("events-view");
+const availableEventsButton = document.getElementById("available-events-button");
+const myEventsButton = document.getElementById("my-events-button");
+const eventsList = document.getElementById("events-list");
+const myEventsList = document.getElementById("my-events-list");
 const detailsView = document.getElementById("details-view");
 const registerView = document.getElementById("register-view");
 const statusView = document.getElementById("status-view");
 const screenTitle = document.getElementById("screen-title");
 const screenSubtitle = document.getElementById("screen-subtitle");
 const userAvatar = document.getElementById("user-avatar");
-const eventsTab = document.getElementById("events-tab");
-const registerTab = document.getElementById("register-tab");
-const statusTab = document.getElementById("status-tab");
-const bottomNav = document.querySelector(".bottom-nav");
+const authTitle = document.getElementById("auth-title");
+const showLoginButton = document.getElementById("show-login-button");
+const showSignupButton = document.getElementById("show-signup-button");
+const signupFields = document.getElementById("signup-fields");
+const signupPhotoInput = document.getElementById("signup-photo");
+const takeSignupPhotoButton = document.getElementById("take-signup-photo-button");
+const signupPhotoPreview = document.getElementById("signup-photo-preview");
+const signupPhotoStatus = document.getElementById("signup-photo-status");
 const loginButton = document.getElementById("login-button");
+const signupButton = document.getElementById("signup-button");
 const logoutButton = document.getElementById("logout-button");
+const saveProfileButton = document.getElementById("save-profile-button");
 const registerButton = document.querySelector(".details-view .primary-button");
 const submitButton = document.querySelector(".submit-button");
+const formMessage = document.getElementById("form-message");
+const profileMessage = document.getElementById("profile-message");
 let temporaryRegistrations = [];
+let statusReturnTimer = null;
+let authMode = "login";
 
 function loadUser() {
   try {
@@ -90,13 +108,38 @@ function saveUser(user) {
   }
 }
 
-function clearUser() {
-  currentUser = null;
+function loadProfile() {
   try {
-    localStorage.removeItem("securepresence_user");
+    return JSON.parse(localStorage.getItem("securepresence_profile") || "null");
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveProfile(profile) {
+  currentProfile = profile;
+  try {
+    localStorage.setItem("securepresence_profile", JSON.stringify(profile));
   } catch (error) {
     return;
   }
+}
+
+function clearUser() {
+  currentUser = null;
+  currentProfile = null;
+  registeredEventIds = new Set();
+  registrations = [];
+  try {
+    localStorage.removeItem("securepresence_user");
+    localStorage.removeItem("securepresence_profile");
+  } catch (error) {
+    return;
+  }
+}
+
+function localRegistrationsKey() {
+  return `securepresence_registrations_${currentUser?.email || "guest"}`;
 }
 
 function mapSupabaseEvent(event) {
@@ -130,6 +173,27 @@ async function loadSupabaseSession() {
   });
 }
 
+async function loadProfileFromSupabase() {
+  if (!supabaseClient || !currentUser) return;
+
+  const { data } = await supabaseClient
+    .from("profiles")
+    .select("first_name,last_name,phone,cnp,face_photo_data,email")
+    .eq("id", currentUser.id)
+    .single();
+
+  if (!data) return;
+
+  saveProfile({
+    first_name: data.first_name || "",
+    last_name: data.last_name || "",
+    phone: data.phone || "",
+    cnp: data.cnp || "",
+    face_photo_data: data.face_photo_data || "",
+    email: data.email || currentUser.email
+  });
+}
+
 async function loadEvents() {
   if (!supabaseClient || !currentUser) return;
 
@@ -144,6 +208,27 @@ async function loadEvents() {
   selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
 }
 
+async function loadRegistrations() {
+  if (!currentUser) return;
+
+  if (supabaseClient && currentUser.id) {
+    const { data } = await supabaseClient
+      .from("registrations")
+      .select("event_id,created_at")
+      .eq("user_id", currentUser.id);
+
+    registrations = data || [];
+  } else {
+    try {
+      registrations = JSON.parse(localStorage.getItem(localRegistrationsKey()) || "[]");
+    } catch (error) {
+      registrations = [];
+    }
+  }
+
+  registeredEventIds = new Set(registrations.map((registration) => registration.event_id));
+}
+
 function eventDateLine(event) {
   return `${event.date} - ${event.time}<br>${event.location}`;
 }
@@ -151,13 +236,15 @@ function eventDateLine(event) {
 function createEventCard(event) {
   const card = document.createElement("article");
   card.className = event.id === selectedEvent.id ? "event-card featured" : "event-card";
+  const isRegistered = registeredEventIds.has(event.id);
+  const countText = isRegistered ? "Inscris" : `${event.registered} inscrisi`;
 
   card.innerHTML = `
     <h3>${event.name}</h3>
     <p class="event-meta">${event.date} - ${event.location}</p>
     <div class="event-footer">
       <span class="status">${event.status}</span>
-      <span class="registered-count">${event.registered} inscrisi</span>
+      <span class="registered-count ${isRegistered ? "registered-pill" : ""}">${countText}</span>
     </div>
   `;
 
@@ -170,15 +257,72 @@ function createEventCard(event) {
 }
 
 function renderEvents() {
-  const list = document.getElementById("events-list");
-  list.innerHTML = "";
+  eventsList.innerHTML = "";
 
   for (const event of events) {
-    list.appendChild(createEventCard(event));
+    eventsList.appendChild(createEventCard(event));
   }
 }
 
+function parseEventDate(value) {
+  const months = {
+    ianuarie: 0, februarie: 1, martie: 2, aprilie: 3, mai: 4, iunie: 5,
+    iulie: 6, august: 7, septembrie: 8, octombrie: 9, noiembrie: 10, decembrie: 11
+  };
+  const text = String(value || "").toLowerCase();
+  const slashMatch = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (slashMatch) return new Date(Number(slashMatch[3]), Number(slashMatch[2]) - 1, Number(slashMatch[1]));
+  const wordMatch = text.match(/(\d{1,2})\s+([a-zăâîșț]+)\s+(\d{4})/);
+  if (wordMatch) return new Date(Number(wordMatch[3]), months[wordMatch[2]] ?? 0, Number(wordMatch[1]));
+  return new Date(8640000000000000);
+}
+
+function renderMyEvents() {
+  myEventsList.innerHTML = "";
+  const myEvents = events.filter((event) => registeredEventIds.has(event.id));
+
+  if (myEvents.length === 0) {
+    myEventsList.innerHTML = `<div class="empty-events">Nu esti inscris inca la niciun eveniment.</div>`;
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcoming = myEvents.filter((event) => parseEventDate(event.date) >= today);
+  const past = myEvents.filter((event) => parseEventDate(event.date) < today);
+
+  for (const group of [
+    ["Urmeaza sa mergi", upcoming],
+    ["Ai fost", past]
+  ]) {
+    if (group[1].length === 0) continue;
+    const title = document.createElement("div");
+    title.className = "empty-events";
+    title.textContent = group[0];
+    myEventsList.appendChild(title);
+    for (const event of group[1]) {
+      myEventsList.appendChild(createEventCard(event));
+    }
+  }
+}
+
+function showAvailableEvents() {
+  eventsList.classList.remove("hidden");
+  myEventsList.classList.add("hidden");
+  availableEventsButton.classList.add("active");
+  myEventsButton.classList.remove("active");
+}
+
+function showMyEvents() {
+  renderMyEvents();
+  eventsList.classList.add("hidden");
+  myEventsList.classList.remove("hidden");
+  availableEventsButton.classList.remove("active");
+  myEventsButton.classList.add("active");
+}
+
 function renderDetails() {
+  const isRegistered = registeredEventIds.has(selectedEvent.id);
   document.getElementById("details-status").textContent = selectedEvent.private ? "Private registration" : "Open registrations";
   document.getElementById("details-name").textContent = selectedEvent.name;
   document.getElementById("details-date").innerHTML = eventDateLine(selectedEvent);
@@ -186,17 +330,21 @@ function renderDetails() {
   document.getElementById("details-total").textContent = selectedEvent.total;
   document.getElementById("details-registered").textContent = selectedEvent.registered;
   document.getElementById("details-available").textContent = selectedEvent.available;
+  registerButton.textContent = isRegistered ? "Esti deja inscris" : "Inscrie-te la eveniment";
 }
 
 function hideAllViews() {
+  if (statusReturnTimer) {
+    clearTimeout(statusReturnTimer);
+    statusReturnTimer = null;
+  }
+
   loginView.classList.remove("active");
+  profileView.classList.remove("active");
   eventsView.classList.remove("active");
   detailsView.classList.remove("active");
   registerView.classList.remove("active");
   statusView.classList.remove("active");
-  eventsTab.classList.remove("active");
-  registerTab.classList.remove("active");
-  statusTab.classList.remove("active");
 }
 
 function requireLogin() {
@@ -210,16 +358,70 @@ function userInitials(email) {
   return name.slice(0, 2).toUpperCase();
 }
 
+function profileIsComplete() {
+  return Boolean(
+    currentProfile &&
+    currentProfile.first_name &&
+    currentProfile.last_name &&
+    currentProfile.phone &&
+    currentProfile.face_photo_data
+  );
+}
+
+function fillProfileForm() {
+  document.getElementById("profile-first-name").value = currentProfile?.first_name || "";
+  document.getElementById("profile-last-name").value = currentProfile?.last_name || "";
+  document.getElementById("profile-phone").value = currentProfile?.phone || "";
+  document.getElementById("profile-cnp").value = currentProfile?.cnp || "";
+}
+
+function fillRegistrationForm() {
+  document.getElementById("first-name").value = currentProfile?.first_name || "not-provided";
+  document.getElementById("last-name").value = currentProfile?.last_name || "not-provided";
+  document.getElementById("email").value = currentUser?.email || currentProfile?.email || "";
+  document.getElementById("phone").value = currentProfile?.phone || "not-provided";
+  document.getElementById("cnp").value = currentProfile?.cnp || "not-provided";
+  document.getElementById("face-photo").value = currentProfile?.face_photo_data ? "Poza profil incarcata" : "not-provided";
+}
+
 function updateUserHeader() {
   if (currentUser) {
     phone.classList.add("logged-in");
     userAvatar.textContent = userInitials(currentUser.email);
-    bottomNav.classList.remove("hidden");
   } else {
     phone.classList.remove("logged-in");
     userAvatar.textContent = "US";
-    bottomNav.classList.add("hidden");
   }
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  const isSignup = mode === "signup";
+  authTitle.textContent = isSignup ? "Sign up user" : "Login user";
+  screenTitle.textContent = isSignup ? "Sign up" : "User login";
+  screenSubtitle.textContent = isSignup ? "Creeaza cont pentru evenimente" : "Acces pentru evenimentele tale";
+  loginButton.classList.toggle("hidden", isSignup);
+  signupButton.classList.toggle("hidden", !isSignup);
+  signupFields.classList.toggle("hidden", !isSignup);
+  showLoginButton.classList.toggle("active", !isSignup);
+  showSignupButton.classList.toggle("active", isSignup);
+  document.getElementById("login-message").textContent = isSignup
+    ? "Daca nu ai cont, creeaza unul cu email si parola."
+    : "Cont user pentru inscriere la evenimente.";
+}
+
+function updateSignupPhotoPreview() {
+  if (signupPhotoInput.files.length === 0) {
+    signupPhotoPreview.classList.add("hidden");
+    signupPhotoPreview.style.backgroundImage = "";
+    signupPhotoStatus.textContent = "Poza este necesara pentru check-in facial.";
+    return;
+  }
+
+  const imageUrl = URL.createObjectURL(signupPhotoInput.files[0]);
+  signupPhotoPreview.style.backgroundImage = `url("${imageUrl}")`;
+  signupPhotoPreview.classList.remove("hidden");
+  signupPhotoStatus.textContent = "Poza a fost incarcata.";
 }
 
 function showLoginView(event) {
@@ -228,8 +430,81 @@ function showLoginView(event) {
   hideAllViews();
   updateUserHeader();
   loginView.classList.add("active");
-  screenTitle.textContent = "User login";
-  screenSubtitle.textContent = "Acces pentru evenimentele tale";
+  setAuthMode(authMode);
+}
+
+function showProfileView(event) {
+  if (event) event.preventDefault();
+  if (!requireLogin()) return;
+
+  hideAllViews();
+  fillProfileForm();
+  profileMessage.textContent = "";
+  profileView.classList.add("active");
+  screenTitle.textContent = "Profil user";
+  screenSubtitle.textContent = "Date folosite automat la inscriere";
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveProfileData(event) {
+  if (event) event.preventDefault();
+  if (!requireLogin()) return;
+
+  const firstName = document.getElementById("profile-first-name").value.trim();
+  const lastName = document.getElementById("profile-last-name").value.trim();
+  const phoneValue = document.getElementById("profile-phone").value.trim();
+  const cnpValue = document.getElementById("profile-cnp").value.trim() || "not-provided";
+  const photoInput = document.getElementById("profile-photo");
+  let photoData = currentProfile?.face_photo_data || "";
+
+  if (photoInput.files.length > 0) {
+    photoData = await readFileAsDataUrl(photoInput.files[0]);
+  }
+
+  if (!firstName || !lastName || !phoneValue || !photoData) {
+    profileMessage.textContent = "Completeaza toate datele si incarca poza.";
+    return;
+  }
+
+  const profile = {
+    email: currentUser.email,
+    first_name: firstName,
+    last_name: lastName,
+    phone: phoneValue,
+    cnp: cnpValue,
+    face_photo_data: photoData
+  };
+
+  if (supabaseClient && currentUser.id) {
+    const { error } = await supabaseClient
+      .from("profiles")
+      .update({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone: profile.phone,
+        cnp: profile.cnp,
+        face_photo_data: profile.face_photo_data,
+        full_name: `${profile.first_name} ${profile.last_name}`.trim()
+      })
+      .eq("id", currentUser.id);
+
+    if (error) {
+      profileMessage.textContent = "Profilul nu s-a putut salva in Supabase.";
+      return;
+    }
+  }
+
+  saveProfile(profile);
+  await loadEvents();
+  showEventsView();
 }
 
 async function loginUser(event) {
@@ -259,9 +534,12 @@ async function loginUser(event) {
       id: data.user.id,
       email: data.user.email
     });
+    await loadProfileFromSupabase();
     await loadEvents();
+    await loadRegistrations();
   } else {
     saveUser({ email });
+    await loadRegistrations();
   }
 
   updateUserHeader();
@@ -272,6 +550,92 @@ async function loginUser(event) {
   } else {
     showEventsView();
   }
+}
+
+async function signupUser(event) {
+  if (event) event.preventDefault();
+
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value.trim();
+  const firstName = document.getElementById("signup-first-name").value.trim();
+  const lastName = document.getElementById("signup-last-name").value.trim();
+  const phoneValue = document.getElementById("signup-phone").value.trim();
+  const cnpValue = document.getElementById("signup-cnp").value.trim() || "not-provided";
+  const photoInput = document.getElementById("signup-photo");
+  const message = document.getElementById("login-message");
+
+  if (!email || !password || !firstName || !lastName || !phoneValue || photoInput.files.length === 0) {
+    message.textContent = "Completeaza toate campurile si incarca poza.";
+    return;
+  }
+
+  if (password.length < 6) {
+    message.textContent = "Parola trebuie sa aiba minim 6 caractere.";
+    return;
+  }
+
+  const photoData = await readFileAsDataUrl(photoInput.files[0]);
+  const profile = {
+    email,
+    first_name: firstName,
+    last_name: lastName,
+    phone: phoneValue,
+    cnp: cnpValue,
+    face_photo_data: photoData
+  };
+
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: `${firstName} ${lastName}`.trim()
+        }
+      }
+    });
+
+    if (error) {
+      message.textContent = "Contul nu s-a putut crea. Verifica email/parola.";
+      return;
+    }
+
+    if (!data.session) {
+      message.textContent = "Cont creat. Verifica emailul, apoi revino la Login.";
+      setAuthMode("login");
+      return;
+    }
+
+    saveUser({
+      id: data.user.id,
+      email: data.user.email
+    });
+
+    const { error: profileError } = await supabaseClient
+      .from("profiles")
+      .update({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone: profile.phone,
+        cnp: profile.cnp,
+        face_photo_data: profile.face_photo_data,
+        full_name: `${profile.first_name} ${profile.last_name}`.trim()
+      })
+      .eq("id", data.user.id);
+
+    if (profileError) {
+      message.textContent = "Cont creat, dar profilul nu s-a putut salva.";
+      return;
+    }
+  } else {
+    saveUser({ email });
+  }
+
+  saveProfile(profile);
+  updateUserHeader();
+  await loadEvents();
+  await loadRegistrations();
+  showEventsView();
 }
 
 async function logoutUser(event) {
@@ -289,10 +653,11 @@ function showEventsView(event) {
 
   hideAllViews();
   renderEvents();
+  renderMyEvents();
+  showAvailableEvents();
   eventsView.classList.add("active");
   screenTitle.textContent = "Evenimente disponibile";
   screenSubtitle.textContent = "Date citite din aplicatia admin";
-  eventsTab.classList.add("active");
 }
 
 function showDetailsView(event) {
@@ -304,23 +669,26 @@ function showDetailsView(event) {
   detailsView.classList.add("active");
   screenTitle.textContent = "Detalii eveniment";
   screenSubtitle.textContent = "Event selectat din baza aplicatiei";
-  eventsTab.classList.add("active");
 }
 
 function showRegisterView(event) {
   if (event) event.preventDefault();
   if (!requireLogin()) return;
 
-  hideAllViews();
-  registerView.classList.add("active");
-  screenTitle.textContent = "Formular inscriere";
-  screenSubtitle.textContent = "Date pregatite pentru registrations";
-  registerTab.classList.add("active");
+  saveRegistration();
 }
 
 async function saveRegistration(event) {
   if (event) event.preventDefault();
   if (!requireLogin()) return;
+
+  if (registeredEventIds.has(selectedEvent.id)) {
+    showEventsView();
+    showMyEvents();
+    return;
+  }
+
+  fillRegistrationForm();
 
   const registration = {
     event_id: selectedEvent.id,
@@ -331,6 +699,7 @@ async function saveRegistration(event) {
     email: document.getElementById("email").value,
     phone: document.getElementById("phone").value,
     cnp: document.getElementById("cnp").value,
+    face_photo_data: currentProfile?.face_photo_data || "",
     synced_to_admin: false,
     created_at: new Date().toISOString()
   };
@@ -344,24 +713,45 @@ async function saveRegistration(event) {
       email: registration.email,
       phone: registration.phone,
       cnp: registration.cnp,
+      face_photo_data: registration.face_photo_data,
       synced_to_admin: false
     });
 
     if (error) {
-      document.getElementById("saved-row").textContent = "registrations: eroare la salvarea in Supabase";
+      const duplicate = String(error.message || "").toLowerCase().includes("duplicate");
+      document.getElementById("saved-row").textContent = duplicate
+        ? `registrations: esti deja inscris la ${selectedEvent.name}`
+        : "registrations: eroare la salvarea in Supabase";
+      if (duplicate) {
+        registeredEventIds.add(selectedEvent.id);
+        showEventsView();
+        showMyEvents();
+        return;
+      }
       showStatusView();
       return;
     }
+
+    await supabaseClient.rpc("increment_event_registration", {
+      p_event_id: registration.event_id
+    });
   } else {
     try {
-      const saved = JSON.parse(localStorage.getItem("securepresence_registrations") || "[]");
+      const saved = JSON.parse(localStorage.getItem(localRegistrationsKey()) || "[]");
       saved.push(registration);
-      localStorage.setItem("securepresence_registrations", JSON.stringify(saved));
+      localStorage.setItem(localRegistrationsKey(), JSON.stringify(saved));
     } catch (error) {
       temporaryRegistrations.push(registration);
     }
   }
 
+  registrations.push(registration);
+  registeredEventIds.add(selectedEvent.id);
+  selectedEvent.registered = Number(selectedEvent.registered || 0) + 1;
+  selectedEvent.available = Math.max(Number(selectedEvent.available || 0) - 1, 0);
+  renderDetails();
+  renderEvents();
+  renderMyEvents();
   document.getElementById("saved-row").textContent = `registrations: rand nou creat pentru ${selectedEvent.name}`;
   showStatusView();
 }
@@ -374,19 +764,27 @@ function showStatusView(event) {
   statusView.classList.add("active");
   screenTitle.textContent = "Inscriere trimisa";
   screenSubtitle.textContent = "Confirmare locala";
-  statusTab.classList.add("active");
+  statusReturnTimer = setTimeout(function () {
+    showEventsView();
+  }, 5000);
 }
 
+showLoginButton.addEventListener("click", () => setAuthMode("login"));
+showSignupButton.addEventListener("click", () => setAuthMode("signup"));
+takeSignupPhotoButton.addEventListener("click", () => signupPhotoInput.click());
+signupPhotoInput.addEventListener("change", updateSignupPhotoPreview);
+availableEventsButton.addEventListener("click", showAvailableEvents);
+myEventsButton.addEventListener("click", showMyEvents);
 loginButton.addEventListener("click", loginUser);
+signupButton.addEventListener("click", signupUser);
 logoutButton.addEventListener("click", logoutUser);
-eventsTab.addEventListener("click", showEventsView);
-registerTab.addEventListener("click", showRegisterView);
-statusTab.addEventListener("click", showStatusView);
+saveProfileButton.addEventListener("click", saveProfileData);
 registerButton.addEventListener("click", showRegisterView);
 submitButton.addEventListener("click", saveRegistration);
 
 async function startApp() {
   await loadSupabaseSession();
+  await loadProfileFromSupabase();
   updateUserHeader();
 
   if (!currentUser) {
@@ -395,6 +793,7 @@ async function startApp() {
   }
 
   await loadEvents();
+  await loadRegistrations();
 
   if (privateEventId) {
     showDetailsView();

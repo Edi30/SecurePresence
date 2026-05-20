@@ -4,10 +4,21 @@
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
+  first_name text default '',
+  last_name text default '',
+  phone text default '',
+  cnp text default '',
+  face_photo_data text default '',
   full_name text,
   role text not null default 'user',
   created_at timestamp with time zone not null default now()
 );
+
+alter table profiles add column if not exists first_name text default '';
+alter table profiles add column if not exists last_name text default '';
+alter table profiles add column if not exists phone text default '';
+alter table profiles add column if not exists cnp text default '';
+alter table profiles add column if not exists face_photo_data text default '';
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -65,9 +76,31 @@ create table if not exists registrations (
   email text not null,
   phone text default '',
   cnp text default '',
+  face_photo_data text default '',
   synced_to_admin boolean not null default false,
-  created_at timestamp with time zone not null default now()
+  created_at timestamp with time zone not null default now(),
+  unique(event_id, user_id)
 );
+
+alter table registrations add column if not exists face_photo_data text default '';
+create unique index if not exists registrations_event_user_unique on registrations(event_id, user_id);
+
+create or replace function public.increment_event_registration(p_event_id text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.events
+  set
+    registered = registered + 1,
+    available = greatest(available - 1, 0)
+  where id = p_event_id;
+end;
+$$;
+
+grant execute on function public.increment_event_registration(text) to authenticated;
 
 alter table profiles enable row level security;
 alter table events enable row level security;
@@ -79,6 +112,13 @@ create policy "users can read own profile"
 on profiles for select
 to authenticated
 using (id = auth.uid());
+
+drop policy if exists "users can update own profile" on profiles;
+create policy "users can update own profile"
+on profiles for update
+to authenticated
+using (id = auth.uid())
+with check (id = auth.uid());
 
 drop policy if exists "users can read allowed events" on events;
 create policy "users can read allowed events"

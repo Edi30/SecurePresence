@@ -22,7 +22,12 @@
     </header>
 
     <section id="login-view" class="content view active login-view">
-      <h2>Login user</h2>
+      <h2 id="auth-title">Login user</h2>
+
+      <div class="auth-switch">
+        <button id="show-login-button" class="active" type="button">Login</button>
+        <button id="show-signup-button" type="button">Sign up</button>
+      </div>
 
       <form class="login-form">
         <label>
@@ -35,7 +40,41 @@
           <input id="login-password" type="password" value="demo1234">
         </label>
 
+        <div id="signup-fields" class="signup-fields hidden">
+          <label>
+            <span>Prenume</span>
+            <input id="signup-first-name" type="text">
+          </label>
+
+          <label>
+            <span>Nume</span>
+            <input id="signup-last-name" type="text">
+          </label>
+
+          <label>
+            <span>Telefon</span>
+            <input id="signup-phone" type="tel">
+          </label>
+
+          <label class="hidden">
+            <span>CNP / ID</span>
+            <input id="signup-cnp" type="text">
+          </label>
+
+          <label>
+            <span>Poza pentru check-in facial</span>
+            <input id="signup-photo" class="hidden" type="file" accept="image/*" capture="user">
+            <button id="take-signup-photo-button" class="camera-button" type="button">
+              <span class="camera-icon">●</span>
+              <span>Fa poza</span>
+            </button>
+            <div id="signup-photo-preview" class="photo-preview hidden"></div>
+            <p id="signup-photo-status" class="photo-status">Poza este necesara pentru check-in facial.</p>
+          </label>
+        </div>
+
         <button id="login-button" class="primary-button login-button" type="button">Intra in cont</button>
+        <button id="signup-button" class="primary-button login-button hidden" type="button">Creeaza cont</button>
         <p id="login-message" class="login-message">Cont user pentru inscriere la evenimente.</p>
       </form>
     </section>
@@ -43,12 +82,53 @@
     <section id="events-view" class="content view">
       <h2>Alege evenimentul la care esti inscris</h2>
 
+      <div class="events-switch">
+        <button id="available-events-button" class="active" type="button">Disponibile</button>
+        <button id="my-events-button" type="button">Inscrierile mele</button>
+      </div>
+
       <div id="events-list" class="events-list"></div>
+
+      <div id="my-events-list" class="events-list hidden"></div>
 
       <article class="database-card">
         <h3>Functionalitati baza de date</h3>
         <p>Site-ul citeste evenimentele publice si trimite inscrierile in registrations.</p>
       </article>
+    </section>
+
+    <section id="profile-view" class="content view profile-view">
+      <h2>Completeaza profilul</h2>
+
+      <form class="profile-form">
+        <label>
+          <span>Prenume</span>
+          <input id="profile-first-name" type="text" required>
+        </label>
+
+        <label>
+          <span>Nume</span>
+          <input id="profile-last-name" type="text" required>
+        </label>
+
+        <label>
+          <span>Telefon</span>
+          <input id="profile-phone" type="tel" required>
+        </label>
+
+        <label class="hidden">
+          <span>CNP / ID</span>
+          <input id="profile-cnp" type="text" required>
+        </label>
+
+        <label>
+          <span>Poza pentru check-in facial</span>
+          <input id="profile-photo" class="photo-input" type="file" accept="image/*" capture="user" required>
+        </label>
+
+        <p id="profile-message" class="form-message"></p>
+        <button id="save-profile-button" class="primary-button submit-button" type="button">Salveaza profilul</button>
+      </form>
     </section>
 
     <section id="details-view" class="content view details-view">
@@ -76,36 +156,28 @@
     </section>
 
     <section id="register-view" class="content view register-view">
-      <h2>Completeaza datele</h2>
+      <h2>Confirma inscrierea</h2>
 
       <form class="registration-form">
-        <label>
-          <span>Prenume</span>
-          <input id="first-name" type="text" value="Edward">
-        </label>
+        <article class="profile-summary-card">
+          <div id="summary-photo" class="summary-photo"></div>
+          <div>
+            <h3 id="summary-name">User</h3>
+            <p id="summary-email">email</p>
+            <p id="summary-phone">telefon</p>
+          </div>
+        </article>
 
-        <label>
-          <span>Nume</span>
-          <input id="last-name" type="text" value="Mutu">
-        </label>
+        <input id="first-name" type="hidden" required>
+        <input id="last-name" type="hidden" required>
+        <input id="email" type="hidden" required>
+        <input id="phone" type="hidden" required>
 
-        <label>
-          <span>Email</span>
-          <input id="email" type="email" value="edward@example.com">
-        </label>
+        <input id="cnp" type="hidden" required>
+        <input id="face-photo" type="hidden" required>
 
-        <label>
-          <span>Telefon</span>
-          <input id="phone" type="tel" value="+40 700 000 000">
-        </label>
-
-        <label>
-          <span>CNP / ID</span>
-          <input id="cnp" type="text" value="optional pentru validare">
-        </label>
-
-        <button class="photo-button" type="button">Adauga poza pentru check-in facial</button>
-        <button class="primary-button submit-button" type="button">Trimite inscrierea</button>
+        <p id="form-message" class="form-message"></p>
+        <button class="primary-button submit-button" type="button">Confirma inscrierea</button>
       </form>
     </section>
 
@@ -125,15 +197,9 @@
 
       <article class="admin-sync-card">
         <h3>In aplicatia admin</h3>
-        <p>Butonul Sync registrations descarca inscrierile noi pe laptop.</p>
+        <p>In 5 secunde revii automat la lista principala de evenimente.</p>
       </article>
     </section>
-
-    <nav class="bottom-nav hidden">
-      <a id="events-tab" class="active" href="#">Events</a>
-      <a id="register-tab" href="#">Register</a>
-      <a id="status-tab" href="#">Status</a>
-    </nav>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

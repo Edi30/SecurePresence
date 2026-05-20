@@ -98,7 +98,7 @@ body {
 }
 
 .content {
-  padding: 24px 24px 118px;
+  padding: 24px;
 }
 
 .view {
@@ -122,24 +122,61 @@ body {
   padding-top: 54px;
 }
 
-.login-form {
+.auth-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 22px;
+  padding: 5px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+}
+
+.auth-switch button {
+  height: 38px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--accent);
+  font: 700 13px Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.auth-switch button.active {
+  background: var(--card);
+  color: var(--text);
+}
+
+.hidden {
+  display: none !important;
+}
+
+.login-form,
+.profile-form,
+.signup-fields {
   display: grid;
   gap: 18px;
 }
 
-.login-form label {
+.login-form label,
+.profile-form label,
+.signup-fields label {
   display: grid;
   gap: 8px;
 }
 
-.login-form span {
+.login-form span,
+.profile-form span,
+.signup-fields span {
   padding-left: 4px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
 }
 
-.login-form input {
+.login-form input,
+.profile-form input,
+.signup-fields input {
   width: 100%;
   height: 50px;
   padding: 0 17px;
@@ -149,6 +186,51 @@ body {
   background: var(--card);
   color: var(--text);
   font: 500 14px Inter, Arial, sans-serif;
+}
+
+.camera-button {
+  width: 100%;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid rgba(20, 107, 133, 0.22);
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 15px Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.camera-icon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.photo-preview {
+  width: 76px;
+  height: 76px;
+  margin-top: 8px;
+  border: 3px solid var(--accent-soft);
+  border-radius: 50%;
+  background-position: center;
+  background-size: cover;
+}
+
+.photo-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 500;
 }
 
 .login-button {
@@ -161,6 +243,31 @@ body {
   font-size: 12px;
   line-height: 1.4;
   font-weight: 500;
+}
+
+.events-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: -8px 0 18px;
+  padding: 5px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+}
+
+.events-switch button {
+  height: 38px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--accent);
+  font: 700 12px Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.events-switch button.active {
+  background: var(--card);
+  color: var(--text);
 }
 
 .events-list {
@@ -224,6 +331,21 @@ body {
   font-weight: 600;
 }
 
+.registered-pill {
+  color: #00bf6b;
+}
+
+.empty-events {
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
 .database-card {
   min-height: 94px;
   margin-top: 36px;
@@ -246,40 +368,6 @@ body {
   font-size: 12px;
   line-height: 1.35;
   font-weight: 500;
-}
-
-.bottom-nav {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 70px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  align-items: center;
-  padding: 0 26px;
-  background: var(--card);
-}
-
-.bottom-nav.hidden {
-  display: none;
-}
-
-.bottom-nav a {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 38px;
-  border-radius: 18px;
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.bottom-nav a.active {
-  background: var(--accent-soft);
-  color: var(--accent);
 }
 
 .event-card {
@@ -401,6 +489,43 @@ body {
   gap: 15px;
 }
 
+.profile-summary-card {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: 78px 1fr;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.summary-photo {
+  width: 72px;
+  height: 72px;
+  border: 3px solid var(--accent-soft);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  background-position: center;
+  background-size: cover;
+}
+
+.profile-summary-card h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.profile-summary-card p {
+  margin: 3px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
 .registration-form label {
   display: grid;
   gap: 8px;
@@ -425,16 +550,17 @@ body {
   font: 500 14px Inter, Arial, sans-serif;
 }
 
-.photo-button {
-  width: 100%;
-  height: 64px;
-  margin-top: 5px;
-  border: 0;
-  border-radius: 18px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font: 600 14px Inter, Arial, sans-serif;
-  cursor: pointer;
+.photo-input {
+  padding-top: 13px;
+}
+
+.form-message {
+  min-height: 18px;
+  margin: -2px 0 0;
+  color: #df3f4f;
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 600;
 }
 
 .submit-button {
