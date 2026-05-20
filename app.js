@@ -955,15 +955,17 @@ async function saveProfileData(event) {
   if (supabaseClient && currentUser.id) {
     const { error } = await supabaseClient
       .from("profiles")
-      .update({
+      .upsert({
+        id: currentUser.id,
+        email: profile.email,
+        username: profile.username,
         first_name: profile.first_name,
         last_name: profile.last_name,
         phone: profile.phone,
         cnp: profile.cnp,
         face_photo_data: profile.face_photo_data,
         full_name: `${profile.first_name} ${profile.last_name}`.trim()
-      })
-      .eq("id", currentUser.id);
+      });
 
     if (error) {
       profileMessage.textContent = t("profileLocalSaved");
@@ -1067,6 +1069,9 @@ async function signupUser(event) {
       options: {
         data: {
           username,
+          first_name: firstName,
+          last_name: lastName,
+          phone: phoneValue,
           full_name: `${firstName} ${lastName}`.trim()
         }
       }
@@ -1085,7 +1090,9 @@ async function signupUser(event) {
     if (data.user?.id) {
       const { error: profileError } = await supabaseClient
         .from("profiles")
-        .update({
+        .upsert({
+          id: data.user.id,
+          email: data.user.email || email,
           username: profile.username,
           first_name: profile.first_name,
           last_name: profile.last_name,
@@ -1093,8 +1100,7 @@ async function signupUser(event) {
           cnp: profile.cnp,
           face_photo_data: profile.face_photo_data,
           full_name: `${profile.first_name} ${profile.last_name}`.trim()
-        })
-        .eq("id", data.user.id);
+        });
 
       if (profileError) {
         message.textContent = t("profileSaveFailed");
