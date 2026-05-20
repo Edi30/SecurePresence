@@ -4,6 +4,7 @@
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
+  username text,
   first_name text default '',
   last_name text default '',
   phone text default '',
@@ -15,10 +16,18 @@ create table if not exists profiles (
 );
 
 alter table profiles add column if not exists first_name text default '';
+alter table profiles add column if not exists username text;
 alter table profiles add column if not exists last_name text default '';
 alter table profiles add column if not exists phone text default '';
 alter table profiles add column if not exists cnp text default '';
 alter table profiles add column if not exists face_photo_data text default '';
+create unique index if not exists profiles_username_unique on profiles(lower(username)) where username is not null;
+
+drop policy if exists "users can find profile by username" on profiles;
+create policy "users can find profile by username"
+on profiles for select
+to anon, authenticated
+using (username is not null);
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -33,7 +42,11 @@ begin
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', '')
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+  set
+    email = excluded.email,
+    username = coalesce(public.profiles.username, new.raw_user_meta_data->>'username'),
+    full_name = coalesce(public.profiles.full_name, excluded.full_name);
 
   return new;
 end;

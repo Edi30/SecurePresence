@@ -178,13 +178,14 @@ async function loadProfileFromSupabase() {
 
   const { data } = await supabaseClient
     .from("profiles")
-    .select("first_name,last_name,phone,cnp,face_photo_data,email")
+    .select("username,first_name,last_name,phone,cnp,face_photo_data,email")
     .eq("id", currentUser.id)
     .single();
 
   if (!data) return;
 
   saveProfile({
+    username: data.username || "",
     first_name: data.first_name || "",
     last_name: data.last_name || "",
     phone: data.phone || "",
@@ -339,6 +340,7 @@ function hideAllViews() {
     statusReturnTimer = null;
   }
 
+  phone.classList.remove("auth-page");
   loginView.classList.remove("active");
   profileView.classList.remove("active");
   eventsView.classList.remove("active");
@@ -405,9 +407,28 @@ function setAuthMode(mode) {
   signupFields.classList.toggle("hidden", !isSignup);
   showLoginButton.classList.toggle("active", !isSignup);
   showSignupButton.classList.toggle("active", isSignup);
+  document.getElementById("login-identity-label").textContent = isSignup ? "Email" : "Email sau username";
+  document.getElementById("login-email").type = isSignup ? "email" : "text";
   document.getElementById("login-message").textContent = isSignup
     ? "Daca nu ai cont, creeaza unul cu email si parola."
     : "Cont user pentru inscriere la evenimente.";
+}
+
+function cleanUsername(value) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
+}
+
+async function resolveLoginEmail(identity) {
+  if (identity.includes("@") || !supabaseClient) return identity;
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("email")
+    .eq("username", cleanUsername(identity))
+    .maybeSingle();
+
+  if (error || !data) return "";
+  return data.email;
 }
 
 function updateSignupPhotoPreview() {
@@ -428,6 +449,7 @@ function showLoginView(event) {
   if (event) event.preventDefault();
 
   hideAllViews();
+  phone.classList.add("auth-page");
   updateUserHeader();
   loginView.classList.add("active");
   setAuthMode(authMode);
@@ -510,16 +532,22 @@ async function saveProfileData(event) {
 async function loginUser(event) {
   if (event) event.preventDefault();
 
-  const email = document.getElementById("login-email").value.trim();
+  const identity = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value.trim();
   const message = document.getElementById("login-message");
 
-  if (!email || !password) {
-    message.textContent = "Completeaza email si parola.";
+  if (!identity || !password) {
+    message.textContent = "Completeaza email/username si parola.";
     return;
   }
 
   if (supabaseClient) {
+    const email = await resolveLoginEmail(identity);
+    if (!email) {
+      message.textContent = "Username-ul nu exista.";
+      return;
+    }
+
     const { data, error } = await supabaseClient.auth.signInWithPassword({
       email,
       password
@@ -538,7 +566,7 @@ async function loginUser(event) {
     await loadEvents();
     await loadRegistrations();
   } else {
-    saveUser({ email });
+    saveUser({ email: identity });
     await loadRegistrations();
   }
 
@@ -557,6 +585,7 @@ async function signupUser(event) {
 
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value.trim();
+  const username = cleanUsername(document.getElementById("signup-username").value);
   const firstName = document.getElementById("signup-first-name").value.trim();
   const lastName = document.getElementById("signup-last-name").value.trim();
   const phoneValue = document.getElementById("signup-phone").value.trim();
@@ -564,7 +593,7 @@ async function signupUser(event) {
   const photoInput = document.getElementById("signup-photo");
   const message = document.getElementById("login-message");
 
-  if (!email || !password || !firstName || !lastName || !phoneValue || photoInput.files.length === 0) {
+  if (!email || !password || !username || !firstName || !lastName || !phoneValue || photoInput.files.length === 0) {
     message.textContent = "Completeaza toate campurile si incarca poza.";
     return;
   }
@@ -577,6 +606,7 @@ async function signupUser(event) {
   const photoData = await readFileAsDataUrl(photoInput.files[0]);
   const profile = {
     email,
+    username,
     first_name: firstName,
     last_name: lastName,
     phone: phoneValue,
@@ -590,6 +620,7 @@ async function signupUser(event) {
       password,
       options: {
         data: {
+          username,
           full_name: `${firstName} ${lastName}`.trim()
         }
       }
@@ -614,6 +645,7 @@ async function signupUser(event) {
     const { error: profileError } = await supabaseClient
       .from("profiles")
       .update({
+        username: profile.username,
         first_name: profile.first_name,
         last_name: profile.last_name,
         phone: profile.phone,

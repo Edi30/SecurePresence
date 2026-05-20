@@ -13,7 +13,10 @@
   <main class="phone">
     <header class="top-bar">
       <div>
-        <h1>SecurePresence</h1>
+        <div class="brand-lockup">
+          <img src="assets/logo/securepresence-badge.png" alt="SecurePresence logo">
+          <h1><span>Secure</span>Presence</h1>
+        </div>
         <p id="screen-title" class="screen-title">Evenimente disponibile</p>
         <p id="screen-subtitle" class="screen-subtitle">Date citite din Supabase: events</p>
       </div>
@@ -31,8 +34,8 @@
 
       <form class="login-form">
         <label>
-          <span>Email</span>
-          <input id="login-email" type="email" value="user@example.com">
+          <span id="login-identity-label">Email sau username</span>
+          <input id="login-email" type="text" value="user@example.com">
         </label>
 
         <label>
@@ -41,6 +44,11 @@
         </label>
 
         <div id="signup-fields" class="signup-fields hidden">
+          <label>
+            <span>Nume utilizator</span>
+            <input id="signup-username" type="text">
+          </label>
+
           <label>
             <span>Prenume</span>
             <input id="signup-first-name" type="text">
