@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecurePresence Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="phone">
+    <header class="top-bar">
+      <div>
+        <h1>SecurePresence</h1>
+        <p id="screen-title" class="screen-title">Evenimente disponibile</p>
+        <p id="screen-subtitle" class="screen-subtitle">Date citite din Supabase: events</p>
+      </div>
+      <div class="avatar">AU</div>
+    </header>
+
+    <section id="events-view" class="content view active">
+      <h2>Alege evenimentul la care esti inscris</h2>
+
+      <div id="events-list" class="events-list"></div>
+
+      <article class="database-card">
+        <h3>Functionalitati baza de date</h3>
+        <p>Site-ul citeste evenimentele publice si trimite inscrierile in registrations.</p>
+      </article>
+    </section>
+
+    <section id="details-view" class="content view details-view">
+      <article class="event-hero">
+        <span id="details-status" class="hero-pill">Open registrations</span>
+        <h2 id="details-name">Business Leadership Workshop</h2>
+      </article>
+
+      <p id="details-date" class="details-date">
+        24 Mai 2026 - 10:00<br>
+        Sala Europa, Bucuresti
+      </p>
+
+      <p id="details-description" class="details-description">
+        Eveniment profesional pentru leadership, networking si check-in rapid cu recunoastere faciala.
+      </p>
+
+      <article class="stats-card">
+        <div><strong id="details-total">156</strong><span>locuri totale</span></div>
+        <div><strong id="details-registered" class="accent">142</strong><span>inscrisi</span></div>
+        <div><strong id="details-available" class="success">14</strong><span>locuri libere</span></div>
+      </article>
+
+      <button class="primary-button" type="button">Inscrie-te la eveniment</button>
+    </section>
+
+    <section id="register-view" class="content view register-view">
+      <h2>Completeaza datele</h2>
+
+      <form class="registration-form">
+        <label>
+          <span>Prenume</span>
+          <input id="first-name" type="text" value="Edward">
+        </label>
+
+        <label>
+          <span>Nume</span>
+          <input id="last-name" type="text" value="Mutu">
+        </label>
+
+        <label>
+          <span>Email</span>
+          <input id="email" type="email" value="edward@example.com">
+        </label>
+
+        <label>
+          <span>Telefon</span>
+          <input id="phone" type="tel" value="+40 700 000 000">
+        </label>
+
+        <label>
+          <span>CNP / ID</span>
+          <input id="cnp" type="text" value="optional pentru validare">
+        </label>
+
+        <button class="photo-button" type="button">Adauga poza pentru check-in facial</button>
+        <button class="primary-button submit-button" type="button">Trimite inscrierea</button>
+      </form>
+    </section>
+
+    <section id="status-view" class="content view status-view">
+      <div class="success-icon">✓</div>
+
+      <h2>Inscriere salvata</h2>
+      <p class="success-message">
+        Datele tale au fost salvate pentru eventul selectat. Cand conectam Supabase, acelasi formular trimite datele online.
+      </p>
+
+      <article class="sync-status-card">
+        <h3>Status baza de date</h3>
+        <p id="saved-row" class="created-row">registrations: rand nou creat</p>
+        <p class="pending-sync">synced_to_admin: false</p>
+      </article>
+
+      <article class="admin-sync-card">
+        <h3>In aplicatia admin</h3>
+        <p>Butonul Sync registrations descarca inscrierile noi pe laptop.</p>
+      </article>
+    </section>
+
+    <nav class="bottom-nav">
+      <a id="events-tab" class="active" href="#">Events</a>
+      <a id="register-tab" href="#">Register</a>
+      <a id="status-tab" href="#">Status</a>
+    </nav>
+  </main>
+
+  <script src="events-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
