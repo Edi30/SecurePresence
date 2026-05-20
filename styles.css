@@ -80,6 +80,23 @@ body {
   font-weight: 700;
 }
 
+.logout-button {
+  display: none;
+  height: 34px;
+  margin: 10px 8px 0 auto;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 17px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px Inter, Arial, sans-serif;
+  cursor: pointer;
+}
+
+.logged-in .logout-button {
+  display: block;
+}
+
 .content {
   padding: 24px 24px 118px;
 }
@@ -99,6 +116,51 @@ body {
   font-size: 20px;
   line-height: 1.25;
   font-weight: 700;
+}
+
+.login-view {
+  padding-top: 54px;
+}
+
+.login-form {
+  display: grid;
+  gap: 18px;
+}
+
+.login-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.login-form span {
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.login-form input {
+  width: 100%;
+  height: 50px;
+  padding: 0 17px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  outline: none;
+  background: var(--card);
+  color: var(--text);
+  font: 500 14px Inter, Arial, sans-serif;
+}
+
+.login-button {
+  margin-top: 18px;
+}
+
+.login-message {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
 }
 
 .events-list {
@@ -197,6 +259,10 @@ body {
   align-items: center;
   padding: 0 26px;
   background: var(--card);
+}
+
+.bottom-nav.hidden {
+  display: none;
 }
 
 .bottom-nav a {

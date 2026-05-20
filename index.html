@@ -17,10 +17,30 @@
         <p id="screen-title" class="screen-title">Evenimente disponibile</p>
         <p id="screen-subtitle" class="screen-subtitle">Date citite din Supabase: events</p>
       </div>
-      <div class="avatar">AU</div>
+      <button id="logout-button" class="logout-button" type="button">Out</button>
+      <div id="user-avatar" class="avatar">US</div>
     </header>
 
-    <section id="events-view" class="content view active">
+    <section id="login-view" class="content view active login-view">
+      <h2>Login user</h2>
+
+      <form class="login-form">
+        <label>
+          <span>Email</span>
+          <input id="login-email" type="email" value="user@example.com">
+        </label>
+
+        <label>
+          <span>Parola</span>
+          <input id="login-password" type="password" value="demo1234">
+        </label>
+
+        <button id="login-button" class="primary-button login-button" type="button">Intra in cont</button>
+        <p id="login-message" class="login-message">Cont user pentru inscriere la evenimente.</p>
+      </form>
+    </section>
+
+    <section id="events-view" class="content view">
       <h2>Alege evenimentul la care esti inscris</h2>
 
       <div id="events-list" class="events-list"></div>
@@ -109,13 +129,15 @@
       </article>
     </section>
 
-    <nav class="bottom-nav">
+    <nav class="bottom-nav hidden">
       <a id="events-tab" class="active" href="#">Events</a>
       <a id="register-tab" href="#">Register</a>
       <a id="status-tab" href="#">Status</a>
     </nav>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="events-data.js"></script>
   <script src="app.js"></script>
 </body>

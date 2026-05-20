@@ -44,21 +44,105 @@ const params = new URLSearchParams(window.location.search);
 const privateEventId = params.get("event");
 const exportedData = window.SECURE_PRESENCE_DATA || {};
 const exportedEvents = exportedData.events || [];
-const events = exportedEvents.length > 0 ? exportedEvents : defaultEvents;
-let selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
+const supabaseConfig = window.SECURE_PRESENCE_SUPABASE || {};
+const hasSupabaseConfig = Boolean(supabaseConfig.url && supabaseConfig.anonKey && window.supabase);
+const supabaseClient = hasSupabaseConfig
+  ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey)
+  : null;
 
+let events = exportedEvents.length > 0 ? exportedEvents : defaultEvents;
+let selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
+let currentUser = loadUser();
+
+const phone = document.querySelector(".phone");
+const loginView = document.getElementById("login-view");
 const eventsView = document.getElementById("events-view");
 const detailsView = document.getElementById("details-view");
 const registerView = document.getElementById("register-view");
 const statusView = document.getElementById("status-view");
 const screenTitle = document.getElementById("screen-title");
 const screenSubtitle = document.getElementById("screen-subtitle");
+const userAvatar = document.getElementById("user-avatar");
 const eventsTab = document.getElementById("events-tab");
 const registerTab = document.getElementById("register-tab");
 const statusTab = document.getElementById("status-tab");
+const bottomNav = document.querySelector(".bottom-nav");
+const loginButton = document.getElementById("login-button");
+const logoutButton = document.getElementById("logout-button");
 const registerButton = document.querySelector(".details-view .primary-button");
 const submitButton = document.querySelector(".submit-button");
 let temporaryRegistrations = [];
+
+function loadUser() {
+  try {
+    return JSON.parse(localStorage.getItem("securepresence_user") || "null");
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveUser(user) {
+  currentUser = user;
+  try {
+    localStorage.setItem("securepresence_user", JSON.stringify(user));
+  } catch (error) {
+    return;
+  }
+}
+
+function clearUser() {
+  currentUser = null;
+  try {
+    localStorage.removeItem("securepresence_user");
+  } catch (error) {
+    return;
+  }
+}
+
+function mapSupabaseEvent(event) {
+  return {
+    id: event.id,
+    name: event.name,
+    description: event.description || "",
+    date: event.event_date || "",
+    time: event.event_time || "",
+    location: event.location || "",
+    status: event.status || "Upcoming",
+    total: event.total || 0,
+    registered: event.registered || 0,
+    available: event.available || 0,
+    private: event.is_private
+  };
+}
+
+async function loadSupabaseSession() {
+  if (!supabaseClient) return;
+
+  const { data } = await supabaseClient.auth.getSession();
+  if (!data.session) {
+    clearUser();
+    return;
+  }
+
+  saveUser({
+    id: data.session.user.id,
+    email: data.session.user.email
+  });
+}
+
+async function loadEvents() {
+  if (!supabaseClient || !currentUser) return;
+
+  const { data, error } = await supabaseClient
+    .from("events")
+    .select("id,name,description,event_date,event_time,location,status,total,registered,available,is_private")
+    .order("created_at", { ascending: true });
+
+  if (error || !data || data.length === 0) return;
+
+  events = data.map(mapSupabaseEvent);
+  selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
+}
 
 function eventDateLine(event) {
   return `${event.date} - ${event.time}<br>${event.location}`;
@@ -105,6 +189,7 @@ function renderDetails() {
 }
 
 function hideAllViews() {
+  loginView.classList.remove("active");
   eventsView.classList.remove("active");
   detailsView.classList.remove("active");
   registerView.classList.remove("active");
@@ -114,8 +199,93 @@ function hideAllViews() {
   statusTab.classList.remove("active");
 }
 
+function requireLogin() {
+  if (currentUser) return true;
+  showLoginView();
+  return false;
+}
+
+function userInitials(email) {
+  const name = email.split("@")[0] || "user";
+  return name.slice(0, 2).toUpperCase();
+}
+
+function updateUserHeader() {
+  if (currentUser) {
+    phone.classList.add("logged-in");
+    userAvatar.textContent = userInitials(currentUser.email);
+    bottomNav.classList.remove("hidden");
+  } else {
+    phone.classList.remove("logged-in");
+    userAvatar.textContent = "US";
+    bottomNav.classList.add("hidden");
+  }
+}
+
+function showLoginView(event) {
+  if (event) event.preventDefault();
+
+  hideAllViews();
+  updateUserHeader();
+  loginView.classList.add("active");
+  screenTitle.textContent = "User login";
+  screenSubtitle.textContent = "Acces pentru evenimentele tale";
+}
+
+async function loginUser(event) {
+  if (event) event.preventDefault();
+
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value.trim();
+  const message = document.getElementById("login-message");
+
+  if (!email || !password) {
+    message.textContent = "Completeaza email si parola.";
+    return;
+  }
+
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      message.textContent = "Login Supabase esuat. Verifica email/parola.";
+      return;
+    }
+
+    saveUser({
+      id: data.user.id,
+      email: data.user.email
+    });
+    await loadEvents();
+  } else {
+    saveUser({ email });
+  }
+
+  updateUserHeader();
+  message.textContent = "Autentificat.";
+
+  if (privateEventId) {
+    showDetailsView();
+  } else {
+    showEventsView();
+  }
+}
+
+async function logoutUser(event) {
+  if (event) event.preventDefault();
+  if (supabaseClient) {
+    await supabaseClient.auth.signOut();
+  }
+  clearUser();
+  showLoginView();
+}
+
 function showEventsView(event) {
   if (event) event.preventDefault();
+  if (!requireLogin()) return;
 
   hideAllViews();
   renderEvents();
@@ -127,6 +297,7 @@ function showEventsView(event) {
 
 function showDetailsView(event) {
   if (event) event.preventDefault();
+  if (!requireLogin()) return;
 
   hideAllViews();
   renderDetails();
@@ -138,6 +309,7 @@ function showDetailsView(event) {
 
 function showRegisterView(event) {
   if (event) event.preventDefault();
+  if (!requireLogin()) return;
 
   hideAllViews();
   registerView.classList.add("active");
@@ -146,12 +318,14 @@ function showRegisterView(event) {
   registerTab.classList.add("active");
 }
 
-function saveRegistration(event) {
+async function saveRegistration(event) {
   if (event) event.preventDefault();
+  if (!requireLogin()) return;
 
   const registration = {
     event_id: selectedEvent.id,
     event_name: selectedEvent.name,
+    user_email: currentUser.email,
     first_name: document.getElementById("first-name").value,
     last_name: document.getElementById("last-name").value,
     email: document.getElementById("email").value,
@@ -161,12 +335,31 @@ function saveRegistration(event) {
     created_at: new Date().toISOString()
   };
 
-  try {
-    const saved = JSON.parse(localStorage.getItem("securepresence_registrations") || "[]");
-    saved.push(registration);
-    localStorage.setItem("securepresence_registrations", JSON.stringify(saved));
-  } catch (error) {
-    temporaryRegistrations.push(registration);
+  if (supabaseClient && currentUser.id) {
+    const { error } = await supabaseClient.from("registrations").insert({
+      event_id: registration.event_id,
+      user_id: currentUser.id,
+      first_name: registration.first_name,
+      last_name: registration.last_name,
+      email: registration.email,
+      phone: registration.phone,
+      cnp: registration.cnp,
+      synced_to_admin: false
+    });
+
+    if (error) {
+      document.getElementById("saved-row").textContent = "registrations: eroare la salvarea in Supabase";
+      showStatusView();
+      return;
+    }
+  } else {
+    try {
+      const saved = JSON.parse(localStorage.getItem("securepresence_registrations") || "[]");
+      saved.push(registration);
+      localStorage.setItem("securepresence_registrations", JSON.stringify(saved));
+    } catch (error) {
+      temporaryRegistrations.push(registration);
+    }
   }
 
   document.getElementById("saved-row").textContent = `registrations: rand nou creat pentru ${selectedEvent.name}`;
@@ -175,6 +368,7 @@ function saveRegistration(event) {
 
 function showStatusView(event) {
   if (event) event.preventDefault();
+  if (!requireLogin()) return;
 
   hideAllViews();
   statusView.classList.add("active");
@@ -183,14 +377,30 @@ function showStatusView(event) {
   statusTab.classList.add("active");
 }
 
+loginButton.addEventListener("click", loginUser);
+logoutButton.addEventListener("click", logoutUser);
 eventsTab.addEventListener("click", showEventsView);
 registerTab.addEventListener("click", showRegisterView);
 statusTab.addEventListener("click", showStatusView);
 registerButton.addEventListener("click", showRegisterView);
 submitButton.addEventListener("click", saveRegistration);
 
-if (privateEventId) {
-  showDetailsView();
-} else {
-  showEventsView();
+async function startApp() {
+  await loadSupabaseSession();
+  updateUserHeader();
+
+  if (!currentUser) {
+    showLoginView();
+    return;
+  }
+
+  await loadEvents();
+
+  if (privateEventId) {
+    showDetailsView();
+  } else {
+    showEventsView();
+  }
 }
+
+startApp();
