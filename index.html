@@ -20,8 +20,18 @@
         <p id="screen-title" class="screen-title">Evenimente disponibile</p>
         <p id="screen-subtitle" class="screen-subtitle">Date citite din Supabase: events</p>
       </div>
-      <button id="logout-button" class="logout-button" type="button">Out</button>
-      <div id="user-avatar" class="avatar">US</div>
+      <div class="user-menu-wrap">
+        <button id="user-avatar" class="avatar" type="button">US</button>
+        <div id="user-menu" class="user-menu hidden">
+          <button id="profile-menu-button" type="button">Profile</button>
+          <button id="settings-menu-button" type="button">Settings</button>
+          <button id="support-menu-button" type="button">Support</button>
+          <button id="logout-button" class="logout-menu-button" type="button">
+            <img src="assets/icons/menu-log-out.png" alt="">
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
     </header>
 
     <section id="login-view" class="content view active login-view">
@@ -34,33 +44,34 @@
 
       <form class="login-form">
         <label>
-          <span id="login-identity-label">Email sau username</span>
-          <input id="login-email" type="text" value="user@example.com">
+          <span id="login-identity-label">Email</span>
+          <input id="login-email" type="text" placeholder="user@gmail.com">
         </label>
 
         <label>
-          <span>Parola</span>
-          <input id="login-password" type="password" value="demo1234">
+          <span id="login-password-label">Password</span>
+          <input id="login-password" type="password" placeholder="Password">
+          <button id="forgot-password-button" class="forgot-password-button" type="button">Ai uitat parola?</button>
         </label>
 
         <div id="signup-fields" class="signup-fields hidden">
           <label>
-            <span>Nume utilizator</span>
+            <span id="signup-username-label">Nume utilizator</span>
             <input id="signup-username" type="text">
           </label>
 
           <label>
-            <span>Prenume</span>
+            <span id="signup-first-name-label">Prenume</span>
             <input id="signup-first-name" type="text">
           </label>
 
           <label>
-            <span>Nume</span>
+            <span id="signup-last-name-label">Nume</span>
             <input id="signup-last-name" type="text">
           </label>
 
           <label>
-            <span>Telefon</span>
+            <span id="signup-phone-label">Telefon</span>
             <input id="signup-phone" type="tel">
           </label>
 
@@ -70,11 +81,11 @@
           </label>
 
           <label>
-            <span>Poza pentru check-in facial</span>
+            <span id="signup-photo-label">Poza pentru check-in facial</span>
             <input id="signup-photo" class="hidden" type="file" accept="image/*" capture="user">
             <button id="take-signup-photo-button" class="camera-button" type="button">
               <span class="camera-icon">●</span>
-              <span>Fa poza</span>
+              <span id="signup-photo-button-label">Fa poza</span>
             </button>
             <div id="signup-photo-preview" class="photo-preview hidden"></div>
             <p id="signup-photo-status" class="photo-status">Poza este necesara pentru check-in facial.</p>
@@ -88,7 +99,7 @@
     </section>
 
     <section id="events-view" class="content view">
-      <h2>Alege evenimentul la care esti inscris</h2>
+      <h2 id="events-heading">Evenimente</h2>
 
       <div class="events-switch">
         <button id="available-events-button" class="active" type="button">Disponibile</button>
@@ -99,28 +110,43 @@
 
       <div id="my-events-list" class="events-list hidden"></div>
 
-      <article class="database-card">
-        <h3>Functionalitati baza de date</h3>
-        <p>Site-ul citeste evenimentele publice si trimite inscrierile in registrations.</p>
+      <article class="database-card hidden">
+        <h3 id="database-title">Functionalitati baza de date</h3>
+        <p id="database-description">Site-ul citeste evenimentele publice si trimite inscrierile in registrations.</p>
       </article>
     </section>
 
     <section id="profile-view" class="content view profile-view">
-      <h2>Completeaza profilul</h2>
+      <h2 id="profile-heading">Profile</h2>
+      <button class="back-button" type="button">Back</button>
 
       <form class="profile-form">
+        <div class="profile-photo-panel">
+          <div id="profile-photo-preview" class="photo-preview hidden"></div>
+          <button id="take-profile-photo-button" class="camera-button" type="button">
+            <span class="camera-icon">●</span>
+            <span id="profile-photo-button-label">Schimba poza</span>
+          </button>
+          <p id="profile-photo-status" class="photo-status">Poza profilului este folosita la check-in.</p>
+        </div>
+
         <label>
-          <span>Prenume</span>
+          <span id="profile-email-label">Email</span>
+          <input id="profile-email" type="email" readonly>
+        </label>
+
+        <label>
+          <span id="profile-first-name-label">Prenume</span>
           <input id="profile-first-name" type="text" required>
         </label>
 
         <label>
-          <span>Nume</span>
+          <span id="profile-last-name-label">Nume</span>
           <input id="profile-last-name" type="text" required>
         </label>
 
         <label>
-          <span>Telefon</span>
+          <span id="profile-phone-label">Telefon</span>
           <input id="profile-phone" type="tel" required>
         </label>
 
@@ -130,13 +156,54 @@
         </label>
 
         <label>
-          <span>Poza pentru check-in facial</span>
-          <input id="profile-photo" class="photo-input" type="file" accept="image/*" capture="user" required>
+          <span id="profile-photo-label">Poza pentru check-in facial</span>
+          <input id="profile-photo" class="hidden" type="file" accept="image/*" capture="user">
         </label>
 
         <p id="profile-message" class="form-message"></p>
         <button id="save-profile-button" class="primary-button submit-button" type="button">Salveaza profilul</button>
       </form>
+    </section>
+
+    <section id="settings-view" class="content view settings-view">
+      <h2 id="settings-heading">Settings</h2>
+      <button class="back-button" type="button">Back</button>
+
+      <div class="settings-card">
+        <div class="settings-row theme-row">
+          <button id="dark-mode-button" class="dark-mode-action" type="button" aria-pressed="false">Dark mode</button>
+          <input id="dark-mode-toggle" class="settings-hidden-input" type="checkbox">
+        </div>
+
+        <label class="settings-field">
+          <span id="language-label">Language</span>
+          <select id="language-select">
+            <option value="ro">Romana</option>
+            <option value="en">English</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section id="support-view" class="content view support-view">
+      <h2 id="support-heading">Suport</h2>
+      <button class="back-button" type="button">Back</button>
+
+      <div class="support-card">
+        <h3 id="support-message-title">Mesaj catre administrator</h3>
+        <p id="support-message-description">Trimite o problema sau o intrebare despre cont, inscrieri sau evenimente.</p>
+        <textarea id="support-message-input" rows="5" placeholder="Scrie mesajul aici"></textarea>
+        <p id="support-message-status" class="form-message"></p>
+        <button id="send-support-message-button" class="secondary-action-button" type="button">Trimite mesaj</button>
+      </div>
+
+      <div class="support-card">
+        <h3 id="password-title">Schimba parola</h3>
+        <p id="password-description">Primeste pe email un link securizat pentru resetarea parolei.</p>
+        <p id="password-message" class="form-message"></p>
+        <button id="change-password-button" class="secondary-action-button" type="button">Trimite link resetare</button>
+      </div>
+
     </section>
 
     <section id="details-view" class="content view details-view">
@@ -155,9 +222,9 @@
       </p>
 
       <article class="stats-card">
-        <div><strong id="details-total">156</strong><span>locuri totale</span></div>
-        <div><strong id="details-registered" class="accent">142</strong><span>inscrisi</span></div>
-        <div><strong id="details-available" class="success">14</strong><span>locuri libere</span></div>
+        <div><strong id="details-total">156</strong><span id="details-total-label">locuri totale</span></div>
+        <div><strong id="details-registered" class="accent">142</strong><span id="details-registered-label">inscrisi</span></div>
+        <div><strong id="details-available" class="success">14</strong><span id="details-available-label">locuri libere</span></div>
       </article>
 
       <button class="primary-button" type="button">Inscrie-te la eveniment</button>
@@ -192,20 +259,20 @@
     <section id="status-view" class="content view status-view">
       <div class="success-icon">✓</div>
 
-      <h2>Inscriere salvata</h2>
-      <p class="success-message">
+      <h2 id="status-heading">Inscriere salvata</h2>
+      <p id="status-message" class="success-message">
         Datele tale au fost salvate pentru eventul selectat. Cand conectam Supabase, acelasi formular trimite datele online.
       </p>
 
       <article class="sync-status-card">
-        <h3>Status baza de date</h3>
+        <h3 id="status-card-title">Status baza de date</h3>
         <p id="saved-row" class="created-row">registrations: rand nou creat</p>
         <p class="pending-sync">synced_to_admin: false</p>
       </article>
 
       <article class="admin-sync-card">
-        <h3>In aplicatia admin</h3>
-        <p>In 5 secunde revii automat la lista principala de evenimente.</p>
+        <h3 id="admin-sync-title">In aplicatia admin</h3>
+        <p id="admin-sync-description">In 5 secunde revii automat la lista principala de evenimente.</p>
       </article>
     </section>
   </main>
