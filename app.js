@@ -51,7 +51,7 @@ const supabaseClient = hasSupabaseConfig
   : null;
 
 let events = exportedEvents.length > 0 ? exportedEvents : defaultEvents;
-let selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
+let selectedEvent = events.find((event) => event.id === privateEventId) || makePrivateEventPlaceholder(privateEventId) || events[0];
 let currentUser = loadUser();
 let currentProfile = loadProfile();
 let registeredEventIds = new Set();
@@ -103,6 +103,9 @@ const saveProfileButton = document.getElementById("save-profile-button");
 const registerButton = document.querySelector(".details-view .primary-button");
 const submitButton = document.querySelector(".submit-button");
 const formMessage = document.getElementById("form-message");
+const privateCodePanel = document.getElementById("private-code-panel");
+const privateCodeInput = document.getElementById("private-code-input");
+const privateCodeMessage = document.getElementById("private-code-message");
 const profileMessage = document.getElementById("profile-message");
 const supportMessageInput = document.getElementById("support-message-input");
 const supportMessageStatus = document.getElementById("support-message-status");
@@ -112,6 +115,24 @@ const changePasswordButton = document.getElementById("change-password-button");
 let temporaryRegistrations = [];
 let statusReturnTimer = null;
 let authMode = "login";
+
+function makePrivateEventPlaceholder(eventId) {
+  if (!eventId) return null;
+  return {
+    id: eventId,
+    name: "Eveniment privat",
+    description: "Introdu codul primit de la organizator pentru a vedea si accesa evenimentul.",
+    date: "",
+    time: "",
+    location: "",
+    status: "Private",
+    total: 0,
+    registered: 0,
+    available: 0,
+    private: true,
+    access_code: ""
+  };
+}
 
 const translations = {
   ro: {
@@ -201,6 +222,9 @@ const translations = {
     createdFor: "registrations: rand nou creat pentru",
     alreadyRegisteredFor: "registrations: esti deja inscris la",
     registrationError: "registrations: eroare la salvarea in Supabase",
+    privateCodeLabel: "Cod event privat",
+    privateCodeRequired: "Introdu codul de 6 cifre primit de la organizator.",
+    privateCodeInvalid: "Codul privat nu este corect.",
     completeProfile: "Completeaza prenume, nume si telefon.",
     profileSaved: "Profil salvat.",
     profileLocalSaved: "Profil salvat local. Verifica politicile Supabase pentru salvare online.",
@@ -306,6 +330,9 @@ const translations = {
     createdFor: "registrations: new row created for",
     alreadyRegisteredFor: "registrations: already registered for",
     registrationError: "registrations: Supabase save error",
+    privateCodeLabel: "Private event code",
+    privateCodeRequired: "Enter the 6-digit code from the organizer.",
+    privateCodeInvalid: "The private code is not correct.",
     completeProfile: "Complete first name, last name and phone.",
     profileSaved: "Profile saved.",
     profileLocalSaved: "Profile saved locally. Check Supabase policies for online saving.",
@@ -417,7 +444,8 @@ function mapSupabaseEvent(event) {
     total: event.total || 0,
     registered: event.registered || 0,
     available: event.available || 0,
-    private: event.is_private
+    private: event.is_private,
+    access_code: event.access_code || ""
   };
 }
 
@@ -476,13 +504,20 @@ async function loadEvents() {
 
   const { data, error } = await supabaseClient
     .from("events")
-    .select("id,name,description,event_date,event_time,location,status,total,registered,available,is_private")
+    .select("id,name,description,event_date,event_time,location,status,total,registered,available,is_private,access_code")
     .order("created_at", { ascending: true });
 
   if (error || !data || data.length === 0) return;
 
-  events = data.map(mapSupabaseEvent);
-  selectedEvent = events.find((event) => event.id === privateEventId) || events[0];
+  const mergedEvents = new Map(events.map((event) => [event.id, event]));
+  for (const event of data.map(mapSupabaseEvent)) {
+    mergedEvents.set(event.id, {
+      ...(mergedEvents.get(event.id) || {}),
+      ...event
+    });
+  }
+  events = Array.from(mergedEvents.values());
+  selectedEvent = events.find((event) => event.id === privateEventId) || makePrivateEventPlaceholder(privateEventId) || events[0];
 }
 
 async function loadRegistrations() {
@@ -610,6 +645,12 @@ function renderDetails() {
   setText("details-total-label", "totalSeats");
   setText("details-registered-label", "registered");
   setText("details-available-label", "availableSeats");
+  setText("private-code-label", "privateCodeLabel");
+  privateCodePanel.classList.toggle("hidden", !selectedEvent.private || isRegistered);
+  privateCodeMessage.textContent = "";
+  if (!selectedEvent.private || isRegistered) {
+    privateCodeInput.value = "";
+  }
   registerButton.textContent = isRegistered ? t("alreadyRegisteredButton") : t("registerEvent");
 }
 
@@ -1345,6 +1386,36 @@ function showRegisterView(event) {
   saveRegistration();
 }
 
+async function verifyPrivateEventAccess() {
+  if (!selectedEvent.private) return true;
+  const code = privateCodeInput.value.trim();
+  if (!/^\d{6}$/.test(code)) {
+    privateCodeMessage.textContent = t("privateCodeRequired");
+    return false;
+  }
+
+  if (supabaseClient && currentUser.id) {
+    const { data, error } = await supabaseClient.rpc("grant_private_event_access", {
+      p_event_id: selectedEvent.id,
+      p_access_code: code
+    });
+    if (error || data !== true) {
+      privateCodeMessage.textContent = t("privateCodeInvalid");
+      return false;
+    }
+    await loadEvents();
+    selectedEvent = events.find((event) => event.id === selectedEvent.id) || selectedEvent;
+    return true;
+  }
+
+  if (String(selectedEvent.access_code || "") !== code) {
+    privateCodeMessage.textContent = t("privateCodeInvalid");
+    return false;
+  }
+
+  return true;
+}
+
 async function saveRegistration(event) {
   if (event) event.preventDefault();
   if (!requireLogin()) return;
@@ -1354,6 +1425,9 @@ async function saveRegistration(event) {
     showMyEvents();
     return;
   }
+
+  const hasPrivateAccess = await verifyPrivateEventAccess();
+  if (!hasPrivateAccess) return;
 
   fillRegistrationForm();
 
@@ -1463,6 +1537,10 @@ sendSupportMessageButton.addEventListener("click", sendSupportMessage);
 changePasswordButton.addEventListener("click", changePassword);
 registerButton.addEventListener("click", showRegisterView);
 submitButton.addEventListener("click", saveRegistration);
+privateCodeInput.addEventListener("input", () => {
+  privateCodeInput.value = privateCodeInput.value.replace(/\D/g, "").slice(0, 6);
+  privateCodeMessage.textContent = "";
+});
 
 async function startApp() {
   loadSettings();

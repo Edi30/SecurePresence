@@ -79,8 +79,14 @@ create table if not exists events (
   registered integer not null default 0,
   available integer not null default 0,
   is_private boolean not null default true,
+  access_code text default '',
   created_at timestamp with time zone not null default now()
 );
+
+alter table events add column if not exists access_code text default '';
+update events
+set access_code = lpad(floor(random() * 1000000)::int::text, 6, '0')
+where is_private = true and coalesce(access_code, '') = '';
 
 create table if not exists event_access (
   id uuid primary key default gen_random_uuid(),
@@ -124,6 +130,32 @@ end;
 $$;
 
 grant execute on function public.increment_event_registration(text) to authenticated;
+
+create or replace function public.grant_private_event_access(p_event_id text, p_access_code text)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if exists (
+    select 1
+    from public.events
+    where id = p_event_id
+      and is_private = true
+      and access_code = p_access_code
+  ) then
+    insert into public.event_access (event_id, user_id)
+    values (p_event_id, auth.uid())
+    on conflict (event_id, user_id) do nothing;
+    return true;
+  end if;
+
+  return false;
+end;
+$$;
+
+grant execute on function public.grant_private_event_access(text, text) to authenticated;
 
 alter table profiles enable row level security;
 alter table events enable row level security;

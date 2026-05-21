@@ -640,10 +640,45 @@ body.dark-mode-body {
   color: #00bf6b;
 }
 
+.private-code-panel {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--card);
+}
+
+.private-code-panel label,
+.private-code-panel span,
+.private-code-panel input {
+  display: block;
+}
+
+.private-code-panel span {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.private-code-panel input {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0 15px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: center;
+}
+
 .primary-button {
   width: 100%;
   height: 56px;
-  margin-top: 64px;
+  margin-top: 32px;
   border: 0;
   border-radius: 18px;
   background: var(--accent);
