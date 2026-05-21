@@ -21,7 +21,10 @@ alter table profiles add column if not exists last_name text default '';
 alter table profiles add column if not exists phone text default '';
 alter table profiles add column if not exists cnp text default '';
 alter table profiles add column if not exists face_photo_data text default '';
-create unique index if not exists profiles_username_unique on profiles(lower(username)) where username is not null;
+drop index if exists profiles_username_unique;
+create unique index profiles_username_unique
+on profiles(lower(username))
+where username is not null and username <> '';
 
 drop policy if exists "users can find profile by username" on profiles;
 create policy "users can find profile by username"
@@ -140,6 +143,12 @@ to authenticated
 using (id = auth.uid())
 with check (id = auth.uid());
 
+drop policy if exists "users can insert own profile" on profiles;
+create policy "users can insert own profile"
+on profiles for insert
+to authenticated
+with check (id = auth.uid());
+
 drop policy if exists "users can read allowed events" on events;
 create policy "users can read allowed events"
 on events for select
@@ -187,3 +196,34 @@ create policy "users can read own registrations"
 on registrations for select
 to authenticated
 using (user_id = auth.uid());
+
+drop policy if exists "users can update own registration profile data" on registrations;
+create policy "users can update own registration profile data"
+on registrations for update
+to authenticated
+using (user_id = auth.uid())
+with check (user_id = auth.uid());
+
+insert into storage.buckets (id, name, public)
+values ('face-photos', 'face-photos', true)
+on conflict (id) do update
+set public = true;
+
+drop policy if exists "users can upload own face photos" on storage.objects;
+create policy "users can upload own face photos"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'face-photos');
+
+drop policy if exists "users can update own face photos" on storage.objects;
+create policy "users can update own face photos"
+on storage.objects for update
+to authenticated
+using (bucket_id = 'face-photos')
+with check (bucket_id = 'face-photos');
+
+drop policy if exists "public can read face photos" on storage.objects;
+create policy "public can read face photos"
+on storage.objects for select
+to anon, authenticated
+using (bucket_id = 'face-photos');

@@ -216,7 +216,8 @@ const translations = {
     shortPassword: "Parola trebuie sa aiba minim 6 caractere.",
     signupFailed: "Contul nu s-a putut crea. Verifica email/parola.",
     verifyEmail: "Cont creat. Verifica emailul, apoi revino la Login.",
-    profileSaveFailed: "Cont creat, dar profilul nu s-a putut salva."
+    profileSaveFailed: "Cont creat, dar profilul nu s-a putut salva.",
+    photoUploadFailed: "Poza nu s-a putut salva in Supabase Storage. Verifica bucketul face-photos."
   },
   en: {
     appTitle: "SecurePresence",
@@ -320,7 +321,8 @@ const translations = {
     shortPassword: "Password must have at least 6 characters.",
     signupFailed: "Account could not be created. Check email/password.",
     verifyEmail: "Account created. Check your email, then return to Login.",
-    profileSaveFailed: "Account created, but profile could not be saved."
+    profileSaveFailed: "Account created, but profile could not be saved.",
+    photoUploadFailed: "Photo could not be saved in Supabase Storage. Check the face-photos bucket."
   }
 };
 
@@ -343,16 +345,29 @@ function saveUser(user) {
 
 function loadProfile() {
   try {
-    return JSON.parse(localStorage.getItem("securepresence_profile") || "null");
+    const profile = JSON.parse(localStorage.getItem("securepresence_profile") || "null");
+    const savedPhoto = localStorage.getItem("securepresence_face_photo") || "";
+    if (profile && savedPhoto && !profile.face_photo_data) {
+      profile.face_photo_data = savedPhoto;
+    }
+    return profile;
   } catch (error) {
     return null;
   }
 }
 
 function saveProfile(profile) {
-  currentProfile = profile;
+  const savedPhoto = localStorage.getItem("securepresence_face_photo") || "";
+  const photo = profile.face_photo_data || currentProfile?.face_photo_data || savedPhoto || "";
+  currentProfile = {
+    ...profile,
+    face_photo_data: photo
+  };
   try {
-    localStorage.setItem("securepresence_profile", JSON.stringify(profile));
+    localStorage.setItem("securepresence_profile", JSON.stringify(currentProfile));
+    if (photo) {
+      localStorage.setItem("securepresence_face_photo", photo);
+    }
   } catch (error) {
     return;
   }
@@ -380,6 +395,7 @@ function clearUser() {
   try {
     localStorage.removeItem("securepresence_user");
     localStorage.removeItem("securepresence_profile");
+    localStorage.removeItem("securepresence_face_photo");
   } catch (error) {
     return;
   }
@@ -418,27 +434,40 @@ async function loadSupabaseSession() {
     id: data.session.user.id,
     email: data.session.user.email
   });
+
+  const metadata = data.session.user.user_metadata || {};
+  if (!currentProfile && (metadata.first_name || metadata.last_name || metadata.phone)) {
+    saveProfile({
+      username: metadata.username || "",
+      first_name: metadata.first_name || "",
+      last_name: metadata.last_name || "",
+      phone: metadata.phone || "",
+      cnp: "",
+      face_photo_data: "",
+      email: data.session.user.email
+    });
+  }
 }
 
 async function loadProfileFromSupabase() {
   if (!supabaseClient || !currentUser) return;
 
+  const { data: userData } = await supabaseClient.auth.getUser();
+  const metadata = userData?.user?.user_metadata || {};
   const { data } = await supabaseClient
     .from("profiles")
     .select("username,first_name,last_name,phone,cnp,face_photo_data,email")
     .eq("id", currentUser.id)
-    .single();
-
-  if (!data) return;
+    .maybeSingle();
 
   saveProfile({
-    username: data.username || currentProfile?.username || "",
-    first_name: data.first_name || currentProfile?.first_name || "",
-    last_name: data.last_name || currentProfile?.last_name || "",
-    phone: data.phone || currentProfile?.phone || "",
-    cnp: data.cnp || currentProfile?.cnp || "",
-    face_photo_data: data.face_photo_data || currentProfile?.face_photo_data || "",
-    email: data.email || currentUser.email
+    username: data?.username || metadata.username || currentProfile?.username || "",
+    first_name: data?.first_name || metadata.first_name || currentProfile?.first_name || "",
+    last_name: data?.last_name || metadata.last_name || currentProfile?.last_name || "",
+    phone: data?.phone || metadata.phone || currentProfile?.phone || "",
+    cnp: data?.cnp || currentProfile?.cnp || "",
+    face_photo_data: data?.face_photo_data || currentProfile?.face_photo_data || localStorage.getItem("securepresence_face_photo") || "",
+    email: data?.email || currentUser.email
   });
 }
 
@@ -925,8 +954,12 @@ function cleanFileName(value) {
 async function saveFacePhoto(file, userId) {
   if (!file) return "";
 
-  if (!supabaseClient || !userId) {
+  if (!supabaseClient) {
     return readFileAsDataUrl(file);
+  }
+
+  if (!userId) {
+    throw new Error("Missing user id for Storage upload");
   }
 
   const extension = file.type === "image/png" ? "png" : "jpg";
@@ -941,11 +974,68 @@ async function saveFacePhoto(file, userId) {
     });
 
   if (error) {
-    return readFileAsDataUrl(file);
+    throw new Error(error.message || "Storage upload failed");
   }
 
   const { data } = supabaseClient.storage.from("face-photos").getPublicUrl(filePath);
+  try {
+    localStorage.setItem("securepresence_face_photo", data.publicUrl);
+  } catch (error) {
+    return data.publicUrl;
+  }
   return data.publicUrl;
+}
+
+async function saveProfileToSupabase(userId, profile) {
+  if (!supabaseClient || !userId) return null;
+
+  const fullName = `${profile.first_name} ${profile.last_name}`.trim();
+  const username = profile.username ? cleanUsername(profile.username) : null;
+  const { error: metadataError } = await supabaseClient.auth.updateUser({
+    data: {
+      username,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      phone: profile.phone,
+      cnp: profile.cnp,
+      face_photo_data: profile.face_photo_data,
+      full_name: fullName
+    }
+  });
+
+  if (metadataError) return metadataError;
+
+  const { error } = await supabaseClient
+    .from("profiles")
+    .upsert({
+      id: userId,
+      email: profile.email,
+      username,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      phone: profile.phone,
+      cnp: profile.cnp,
+      face_photo_data: profile.face_photo_data,
+      full_name: fullName
+    }, {
+      onConflict: "id"
+    });
+
+  if (error) return error;
+
+  const { error: registrationsError } = await supabaseClient
+    .from("registrations")
+    .update({
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      email: profile.email,
+      phone: profile.phone,
+      cnp: profile.cnp,
+      face_photo_data: profile.face_photo_data
+    })
+    .eq("user_id", userId);
+
+  return registrationsError;
 }
 
 async function saveProfileData(event) {
@@ -960,7 +1050,12 @@ async function saveProfileData(event) {
   let photoData = currentProfile?.face_photo_data || "";
 
   if (photoInput.files.length > 0) {
-    photoData = await saveFacePhoto(photoInput.files[0], currentUser.id);
+    try {
+      photoData = await saveFacePhoto(photoInput.files[0], currentUser.id);
+    } catch (error) {
+      profileMessage.textContent = t("photoUploadFailed");
+      return;
+    }
   }
 
   if (!firstName || !lastName || !phoneValue) {
@@ -983,19 +1078,7 @@ async function saveProfileData(event) {
   profileMessage.textContent = t("profileSaved");
 
   if (supabaseClient && currentUser.id) {
-    const { error } = await supabaseClient
-      .from("profiles")
-      .upsert({
-        id: currentUser.id,
-        email: profile.email,
-        username: profile.username,
-        first_name: profile.first_name,
-        last_name: profile.last_name,
-        phone: profile.phone,
-        cnp: profile.cnp,
-        face_photo_data: profile.face_photo_data,
-        full_name: `${profile.first_name} ${profile.last_name}`.trim()
-      });
+    const error = await saveProfileToSupabase(currentUser.id, profile);
 
     if (error) {
       profileMessage.textContent = t("profileLocalSaved");
@@ -1020,29 +1103,45 @@ async function loginUser(event) {
   }
 
   if (supabaseClient) {
-    const email = await resolveLoginEmail(identity);
-    if (!email) {
-      message.textContent = t("missingUsername");
-      return;
-    }
+    try {
+      const email = await resolveLoginEmail(identity);
+      if (!email) {
+        message.textContent = t("missingUsername");
+        return;
+      }
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (error) {
+      if (error) {
+        message.textContent = t("loginFailed");
+        return;
+      }
+
+      const metadata = data.user.user_metadata || {};
+      saveUser({
+        id: data.user.id,
+        email: data.user.email
+      });
+      saveProfile({
+        username: metadata.username || currentProfile?.username || "",
+        first_name: metadata.first_name || currentProfile?.first_name || "",
+        last_name: metadata.last_name || currentProfile?.last_name || "",
+        phone: metadata.phone || currentProfile?.phone || "",
+        cnp: currentProfile?.cnp || "",
+        face_photo_data: currentProfile?.face_photo_data || localStorage.getItem("securepresence_face_photo") || "",
+        email: data.user.email
+      });
+
+      await loadProfileFromSupabase();
+      await loadEvents();
+      await loadRegistrations();
+    } catch (error) {
       message.textContent = t("loginFailed");
       return;
     }
-
-    saveUser({
-      id: data.user.id,
-      email: data.user.email
-    });
-    await loadProfileFromSupabase();
-    await loadEvents();
-    await loadRegistrations();
   } else {
     saveUser({ email: identity });
     await loadRegistrations();
@@ -1116,22 +1215,16 @@ async function signupUser(event) {
       email: data.user?.email || email
     });
 
-    profile.face_photo_data = await saveFacePhoto(photoInput.files[0], data.user?.id);
+    try {
+      profile.face_photo_data = await saveFacePhoto(photoInput.files[0], data.user?.id);
+    } catch (error) {
+      message.textContent = t("photoUploadFailed");
+      return;
+    }
 
     if (data.user?.id) {
-      const { error: profileError } = await supabaseClient
-        .from("profiles")
-        .upsert({
-          id: data.user.id,
-          email: data.user.email || email,
-          username: profile.username,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          phone: profile.phone,
-          cnp: profile.cnp,
-          face_photo_data: profile.face_photo_data,
-          full_name: `${profile.first_name} ${profile.last_name}`.trim()
-        });
+      profile.email = data.user.email || email;
+      const profileError = await saveProfileToSupabase(data.user.id, profile);
 
       if (profileError) {
         message.textContent = t("profileSaveFailed");
