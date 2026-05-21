@@ -918,6 +918,36 @@ function readFileAsDataUrl(file) {
   });
 }
 
+function cleanFileName(value) {
+  return String(value || "face-photo.jpg").toLowerCase().replace(/[^a-z0-9._-]/g, "-");
+}
+
+async function saveFacePhoto(file, userId) {
+  if (!file) return "";
+
+  if (!supabaseClient || !userId) {
+    return readFileAsDataUrl(file);
+  }
+
+  const extension = file.type === "image/png" ? "png" : "jpg";
+  const fileName = `${Date.now()}-${cleanFileName(file.name || `face-photo.${extension}`)}`;
+  const filePath = `${userId}/${fileName}`;
+  const { error } = await supabaseClient.storage
+    .from("face-photos")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      contentType: file.type || `image/${extension}`,
+      upsert: true
+    });
+
+  if (error) {
+    return readFileAsDataUrl(file);
+  }
+
+  const { data } = supabaseClient.storage.from("face-photos").getPublicUrl(filePath);
+  return data.publicUrl;
+}
+
 async function saveProfileData(event) {
   if (event) event.preventDefault();
   if (!requireLogin()) return;
@@ -930,7 +960,7 @@ async function saveProfileData(event) {
   let photoData = currentProfile?.face_photo_data || "";
 
   if (photoInput.files.length > 0) {
-    photoData = await readFileAsDataUrl(photoInput.files[0]);
+    photoData = await saveFacePhoto(photoInput.files[0], currentUser.id);
   }
 
   if (!firstName || !lastName || !phoneValue) {
@@ -1051,7 +1081,6 @@ async function signupUser(event) {
     return;
   }
 
-  const photoData = await readFileAsDataUrl(photoInput.files[0]);
   const profile = {
     email,
     username,
@@ -1059,7 +1088,7 @@ async function signupUser(event) {
     last_name: lastName,
     phone: phoneValue,
     cnp: cnpValue,
-    face_photo_data: photoData
+    face_photo_data: ""
   };
 
   if (supabaseClient) {
@@ -1087,6 +1116,8 @@ async function signupUser(event) {
       email: data.user?.email || email
     });
 
+    profile.face_photo_data = await saveFacePhoto(photoInput.files[0], data.user?.id);
+
     if (data.user?.id) {
       const { error: profileError } = await supabaseClient
         .from("profiles")
@@ -1109,6 +1140,7 @@ async function signupUser(event) {
     }
   } else {
     saveUser({ email });
+    profile.face_photo_data = await saveFacePhoto(photoInput.files[0], "");
   }
 
   saveProfile(profile);
