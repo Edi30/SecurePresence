@@ -58,8 +58,6 @@ body.dark-mode-body {
   width: 390px;
   height: min(844px, 100vh);
   height: min(844px, 100dvh);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
   overscroll-behavior: none;
   background: var(--bg);
@@ -114,9 +112,11 @@ body.dark-mode-body {
 }
 
 .top-bar {
-  /* Header fix în partea de sus a aplicației. */
-  position: relative;
-  flex: 0 0 116px;
+  /* Headerul este complet în afara zonei scrollabile. */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 30;
   height: 116px;
   display: flex;
@@ -149,7 +149,6 @@ body.dark-mode-body {
 }
 
 .auth-page .top-bar {
-  flex-basis: 124px;
   height: 124px;
   align-items: center;
   justify-content: center;
@@ -263,15 +262,21 @@ body.dark-mode-body {
 }
 
 .content {
-  /* Spațiul comun al tuturor ecranelor aplicației web. */
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 0;
+  /* Fiecare ecran se derulează separat sub headerul fix. */
+  position: absolute;
+  top: 116px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 24px;
   scrollbar-width: none;
+}
+
+.auth-page .content {
+  top: 124px;
 }
 
 .content::-webkit-scrollbar {

@@ -1469,6 +1469,26 @@ async function unlockPrivateEventByCode(event) {
     return;
   }
 
+  const matchedLocalEvent = events.find((item) => item.private && String(item.access_code || "") === code);
+  if (matchedLocalEvent) {
+    selectedEvent = matchedLocalEvent;
+    privateCodeInput.value = code;
+    privateAccessMessage.textContent = t("privateAccessSuccess");
+
+    if (supabaseClient && currentUser.id) {
+      await supabaseClient.rpc("grant_private_event_access", {
+        p_event_id: matchedLocalEvent.id,
+        p_access_code: code
+      });
+      await loadEvents();
+      selectedEvent = events.find((item) => item.id === matchedLocalEvent.id) || matchedLocalEvent;
+      privateCodeInput.value = code;
+    }
+
+    showDetailsView();
+    return;
+  }
+
   if (supabaseClient && currentUser.id) {
     const { data, error } = await supabaseClient.rpc("grant_private_event_access_by_code", {
       p_access_code: code
@@ -1486,16 +1506,7 @@ async function unlockPrivateEventByCode(event) {
     return;
   }
 
-  const matchedEvent = events.find((item) => item.private && String(item.access_code || "") === code);
-  if (!matchedEvent) {
-    privateAccessMessage.textContent = t("privateCodeInvalid");
-    return;
-  }
-
-  selectedEvent = matchedEvent;
-  privateCodeInput.value = code;
-  privateAccessMessage.textContent = t("privateAccessSuccess");
-  showDetailsView();
+  privateAccessMessage.textContent = t("privateCodeInvalid");
 }
 
 async function saveRegistration(event) {
