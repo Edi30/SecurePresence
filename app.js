@@ -249,7 +249,7 @@ const translations = {
     completeSignup: "Completeaza toate campurile si incarca poza.",
     shortPassword: "Parola trebuie sa aiba minim 6 caractere.",
     signupFailed: "Contul nu s-a putut crea. Verifica email/parola.",
-    verifyEmail: "Cont creat. Verifica emailul, apoi revino la Login.",
+    verifyEmail: "Cont creat. Verifica emailul pentru login.",
     profileSaveFailed: "Cont creat, dar profilul nu s-a putut salva.",
     photoUploadFailed: "Poza nu s-a putut salva in Supabase Storage. Verifica bucketul face-photos."
   },
@@ -361,7 +361,7 @@ const translations = {
     completeSignup: "Complete all fields and upload a photo.",
     shortPassword: "Password must have at least 6 characters.",
     signupFailed: "Account could not be created. Check email/password.",
-    verifyEmail: "Account created. Check your email, then return to Login.",
+    verifyEmail: "Account created. Verify your email for login.",
     profileSaveFailed: "Account created, but profile could not be saved.",
     photoUploadFailed: "Photo could not be saved in Supabase Storage. Check the face-photos bucket."
   }
@@ -1300,6 +1300,13 @@ async function signupUser(event) {
         return;
       }
     }
+
+    await supabaseClient.auth.signOut();
+    clearUser();
+    setAuthMode("login");
+    showLoginView();
+    document.getElementById("login-message").textContent = t("verifyEmail");
+    return;
   } else {
     saveUser({ email });
     profile.face_photo_data = await saveFacePhoto(photoInput.files[0], "");

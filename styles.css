@@ -43,20 +43,16 @@ body.dark-mode-body {
 }
 
 .phone {
-  /* Ecranul aplicației mobile; headerul rămâne sticky, iar conținutul face scroll intern. */
+  /* Ecranul aplicației mobile; headerul rămâne fix, iar doar secțiunea activă face scroll. */
   position: relative;
   width: 390px;
   height: min(844px, 100vh);
-  overflow-x: hidden;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--bg);
   border-radius: 34px;
   box-shadow: 0 22px 70px rgba(28, 38, 56, 0.18);
-  scrollbar-width: none;
-}
-
-.phone::-webkit-scrollbar {
-  display: none;
 }
 
 .phone,
@@ -107,8 +103,7 @@ body.dark-mode-body {
 
 .top-bar {
   /* Header fix în partea de sus a aplicației. */
-  position: sticky;
-  top: 0;
+  flex: 0 0 116px;
   z-index: 30;
   height: 116px;
   display: flex;
@@ -141,6 +136,7 @@ body.dark-mode-body {
 }
 
 .auth-page .top-bar {
+  flex-basis: 124px;
   height: 124px;
   align-items: center;
   justify-content: center;
@@ -255,7 +251,14 @@ body.dark-mode-body {
 
 .content {
   /* Spațiul comun al tuturor ecranelor aplicației web. */
+  min-height: 0;
+  overflow-y: auto;
   padding: 24px;
+  scrollbar-width: none;
+}
+
+.content::-webkit-scrollbar {
+  display: none;
 }
 
 .back-button {
@@ -276,6 +279,7 @@ body.dark-mode-body {
 
 .view.active {
   display: block;
+  flex: 1 1 auto;
 }
 
 .content h2 {
