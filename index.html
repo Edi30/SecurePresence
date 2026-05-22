@@ -10,7 +10,9 @@
   <link rel="stylesheet" href="styles.css?v=20260521-sync">
 </head>
 <body>
+  <!-- Containerul simulează aplicația mobilă folosită de participanți. -->
   <main class="phone">
+    <!-- Header persistent: logo, titlu context și meniul utilizatorului. -->
     <header class="top-bar">
       <div>
         <div class="brand-lockup">
@@ -34,6 +36,7 @@
       </div>
     </header>
 
+    <!-- Autentificare și creare cont participant. -->
     <section id="login-view" class="content view active login-view">
       <h2 id="auth-title">Login user</h2>
 
@@ -98,6 +101,7 @@
       </form>
     </section>
 
+    <!-- Lista evenimentelor disponibile și accesul pe bază de cod pentru evenimente private. -->
     <section id="events-view" class="content view">
       <h2 id="events-heading">Evenimente</h2>
 
@@ -105,6 +109,16 @@
         <button id="available-events-button" class="active" type="button">Disponibile</button>
         <button id="my-events-button" type="button">Inscrierile mele</button>
       </div>
+
+      <article id="private-event-access-card" class="private-event-access-card">
+        <h3 id="private-access-title">Ai cod pentru un event privat?</h3>
+        <p id="private-access-description">Introdu codul primit de la organizator pentru a accesa formularul de inscriere.</p>
+        <div class="private-access-row">
+          <input id="private-access-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000">
+          <button id="private-access-button" type="button">Acceseaza</button>
+        </div>
+        <p id="private-access-message" class="form-message"></p>
+      </article>
 
       <div id="events-list" class="events-list"></div>
 
@@ -116,6 +130,7 @@
       </article>
     </section>
 
+    <!-- Profilul participantului, folosit automat la înscriere. -->
     <section id="profile-view" class="content view profile-view">
       <h2 id="profile-heading">Profile</h2>
       <button class="back-button" type="button">Back</button>
@@ -206,6 +221,7 @@
 
     </section>
 
+    <!-- Detaliile eventului selectat și verificarea codului privat. -->
     <section id="details-view" class="content view details-view">
       <article class="event-hero">
         <span id="details-status" class="hero-pill">Open registrations</span>
@@ -238,6 +254,7 @@
       <button class="primary-button" type="button">Inscrie-te la eveniment</button>
     </section>
 
+    <!-- Confirmarea finală a datelor înainte de salvarea înscrierii. -->
     <section id="register-view" class="content view register-view">
       <h2>Confirma inscrierea</h2>
 

@@ -2,6 +2,7 @@
 -- Ruleaza acest fisier in Supabase SQL Editor.
 
 create table if not exists profiles (
+  -- Profilul extinde auth.users cu datele necesare pentru înscriere și check-in facial.
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
   username text,
@@ -68,6 +69,7 @@ after insert on auth.users
 for each row execute function public.handle_new_user();
 
 create table if not exists events (
+  -- Evenimentele sunt citite de aplicația web și sincronizate cu aplicația admin.
   id text primary key,
   name text not null,
   description text default '',
@@ -89,6 +91,7 @@ set access_code = lpad(floor(random() * 1000000)::int::text, 6, '0')
 where is_private = true and coalesce(access_code, '') = '';
 
 create table if not exists event_access (
+  -- Leagă utilizatorii de evenimente private după validarea codului primit de la organizator.
   id uuid primary key default gen_random_uuid(),
   event_id text not null references events(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -97,6 +100,7 @@ create table if not exists event_access (
 );
 
 create table if not exists registrations (
+  -- Înscrierile utilizatorilor; aplicația admin le importă pentru recunoaștere facială.
   id uuid primary key default gen_random_uuid(),
   event_id text not null references events(id) on delete cascade,
   user_id uuid references auth.users(id) on delete set null,
@@ -156,6 +160,37 @@ end;
 $$;
 
 grant execute on function public.grant_private_event_access(text, text) to authenticated;
+
+create or replace function public.grant_private_event_access_by_code(p_access_code text)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  matched_event_id text;
+begin
+  select id
+  into matched_event_id
+  from public.events
+  where is_private = true
+    and access_code = p_access_code
+  order by created_at desc
+  limit 1;
+
+  if matched_event_id is null then
+    return '';
+  end if;
+
+  insert into public.event_access (event_id, user_id)
+  values (matched_event_id, auth.uid())
+  on conflict (event_id, user_id) do nothing;
+
+  return matched_event_id;
+end;
+$$;
+
+grant execute on function public.grant_private_event_access_by_code(text) to authenticated;
 
 alter table profiles enable row level security;
 alter table events enable row level security;

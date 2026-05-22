@@ -1,4 +1,5 @@
 const defaultEvents = [
+  // Date demo folosite când aplicația web nu primește events-data.js și nu are Supabase.
   {
     id: "business-leadership-workshop",
     name: "Business Leadership Workshop",
@@ -45,6 +46,7 @@ const privateEventId = params.get("event");
 const exportedData = window.SECURE_PRESENCE_DATA || {};
 const exportedEvents = exportedData.events || [];
 const supabaseConfig = window.SECURE_PRESENCE_SUPABASE || {};
+// Dacă există configurare Supabase, site-ul folosește baza online; altfel rămâne demo/local.
 const hasSupabaseConfig = Boolean(supabaseConfig.url && supabaseConfig.anonKey && window.supabase);
 const supabaseClient = hasSupabaseConfig
   ? window.supabase.createClient(supabaseConfig.url, supabaseConfig.anonKey)
@@ -66,6 +68,10 @@ const supportView = document.getElementById("support-view");
 const eventsView = document.getElementById("events-view");
 const availableEventsButton = document.getElementById("available-events-button");
 const myEventsButton = document.getElementById("my-events-button");
+const privateEventAccessCard = document.getElementById("private-event-access-card");
+const privateAccessCodeInput = document.getElementById("private-access-code-input");
+const privateAccessButton = document.getElementById("private-access-button");
+const privateAccessMessage = document.getElementById("private-access-message");
 const eventsList = document.getElementById("events-list");
 const myEventsList = document.getElementById("my-events-list");
 const detailsView = document.getElementById("details-view");
@@ -170,6 +176,10 @@ const translations = {
     myRegistrations: "Inscrierile mele",
     databaseTitle: "Functionalitati baza de date",
     databaseDescription: "Site-ul citeste evenimentele publice si trimite inscrierile in registrations.",
+    privateAccessTitle: "Ai cod pentru un event privat?",
+    privateAccessDescription: "Introdu codul primit de la organizator pentru a accesa formularul de inscriere.",
+    privateAccessButton: "Acceseaza",
+    privateAccessSuccess: "Event privat gasit. Poti continua inscrierea.",
     profile: "Profil",
     settings: "Setari",
     support: "Suport",
@@ -278,6 +288,10 @@ const translations = {
     myRegistrations: "My events",
     databaseTitle: "Database features",
     databaseDescription: "The site reads public events and sends registrations to the registrations table.",
+    privateAccessTitle: "Have a private event code?",
+    privateAccessDescription: "Enter the code from the organizer to open the registration form.",
+    privateAccessButton: "Access",
+    privateAccessSuccess: "Private event found. You can continue registration.",
     profile: "Profile",
     settings: "Settings",
     support: "Support",
@@ -500,6 +514,7 @@ async function loadProfileFromSupabase() {
 }
 
 async function loadEvents() {
+  // Încarcă evenimentele vizibile utilizatorului din Supabase și le combină cu exportul local.
   if (!supabaseClient || !currentUser) return;
 
   const { data, error } = await supabaseClient
@@ -521,6 +536,7 @@ async function loadEvents() {
 }
 
 async function loadRegistrations() {
+  // Populează setul registeredEventIds, folosit pentru butonul "deja înscris".
   if (!currentUser) return;
 
   if (supabaseClient && currentUser.id) {
@@ -569,6 +585,7 @@ function createEventCard(event) {
 }
 
 function renderEvents() {
+  // Reconstruiește lista de evenimente disponibile de fiecare dată când datele se schimbă.
   eventsList.innerHTML = "";
 
   for (const event of events) {
@@ -577,6 +594,7 @@ function renderEvents() {
 }
 
 function parseEventDate(value) {
+  // Acceptă atât date românești cu lună scrisă, cât și format dd/mm/yyyy.
   const months = {
     ianuarie: 0, februarie: 1, martie: 2, aprilie: 3, mai: 4, iunie: 5,
     iulie: 6, august: 7, septembrie: 8, octombrie: 9, noiembrie: 10, decembrie: 11
@@ -619,6 +637,7 @@ function renderMyEvents() {
 }
 
 function showAvailableEvents() {
+  privateEventAccessCard.classList.remove("hidden");
   eventsList.classList.remove("hidden");
   myEventsList.classList.add("hidden");
   availableEventsButton.classList.add("active");
@@ -627,6 +646,7 @@ function showAvailableEvents() {
 
 function showMyEvents() {
   renderMyEvents();
+  privateEventAccessCard.classList.add("hidden");
   eventsList.classList.add("hidden");
   myEventsList.classList.remove("hidden");
   availableEventsButton.classList.remove("active");
@@ -634,6 +654,7 @@ function showMyEvents() {
 }
 
 function renderDetails() {
+  // Pagina de detalii reflectă eventul selectat și afișează codul doar pentru event privat.
   const isRegistered = registeredEventIds.has(selectedEvent.id);
   document.getElementById("details-status").textContent = selectedEvent.private ? t("privateRegistration") : t("openRegistrations");
   document.getElementById("details-name").textContent = selectedEvent.name;
@@ -762,6 +783,7 @@ function saveLanguage() {
 }
 
 function applyLanguage() {
+  // Actualizează textele statice după limba selectată, fără reload de pagină.
   document.documentElement.lang = currentLanguage();
   darkModeButton.textContent = t("darkMode");
   languageLabel.textContent = t("language");
@@ -789,6 +811,9 @@ function applyLanguage() {
   setText("my-events-button", "myRegistrations");
   setText("database-title", "databaseTitle");
   setText("database-description", "databaseDescription");
+  setText("private-access-title", "privateAccessTitle");
+  setText("private-access-description", "privateAccessDescription");
+  setText("private-access-button", "privateAccessButton");
   setText("profile-heading", "profileTitle");
   setText("profile-photo-button-label", "changePhoto");
   setText("profile-email-label", "email");
@@ -1080,6 +1105,7 @@ async function saveProfileToSupabase(userId, profile) {
 }
 
 async function saveProfileData(event) {
+  // Profilul salvat aici este folosit automat la înscrierea la eveniment.
   if (event) event.preventDefault();
   if (!requireLogin()) return;
 
@@ -1132,6 +1158,7 @@ async function saveProfileData(event) {
 }
 
 async function loginUser(event) {
+  // Loginul funcționează cu Supabase când este configurat, iar în demo păstrează userul local.
   if (event) event.preventDefault();
 
   const identity = document.getElementById("login-email").value.trim();
@@ -1199,6 +1226,7 @@ async function loginUser(event) {
 }
 
 async function signupUser(event) {
+  // Creează contul și salvează datele de profil necesare pentru check-in facial.
   if (event) event.preventDefault();
 
   const email = document.getElementById("login-email").value.trim();
@@ -1356,6 +1384,7 @@ async function changePassword(event) {
 }
 
 function showEventsView(event) {
+  // Ecranul principal după autentificare: evenimente disponibile + înscrierile userului.
   if (event) event.preventDefault();
   if (!requireLogin()) return;
 
@@ -1387,6 +1416,7 @@ function showRegisterView(event) {
 }
 
 async function verifyPrivateEventAccess() {
+  // Înainte de înscriere verifică dacă utilizatorul are cod valid pentru eventul privat.
   if (!selectedEvent.private) return true;
   const code = privateCodeInput.value.trim();
   if (!/^\d{6}$/.test(code)) {
@@ -1416,7 +1446,53 @@ async function verifyPrivateEventAccess() {
   return true;
 }
 
+function cleanPrivateCodeInput(input, messageElement) {
+  input.value = input.value.replace(/\D/g, "").slice(0, 6);
+  messageElement.textContent = "";
+}
+
+async function unlockPrivateEventByCode(event) {
+  // Permite accesarea unui event privat direct din cod, fără link special.
+  if (event) event.preventDefault();
+  if (!requireLogin()) return;
+
+  const code = privateAccessCodeInput.value.trim();
+  if (!/^\d{6}$/.test(code)) {
+    privateAccessMessage.textContent = t("privateCodeRequired");
+    return;
+  }
+
+  if (supabaseClient && currentUser.id) {
+    const { data, error } = await supabaseClient.rpc("grant_private_event_access_by_code", {
+      p_access_code: code
+    });
+    const eventId = typeof data === "string" ? data : "";
+    if (error || !eventId) {
+      privateAccessMessage.textContent = t("privateCodeInvalid");
+      return;
+    }
+    await loadEvents();
+    selectedEvent = events.find((item) => item.id === eventId) || selectedEvent;
+    privateCodeInput.value = code;
+    privateAccessMessage.textContent = t("privateAccessSuccess");
+    showDetailsView();
+    return;
+  }
+
+  const matchedEvent = events.find((item) => item.private && String(item.access_code || "") === code);
+  if (!matchedEvent) {
+    privateAccessMessage.textContent = t("privateCodeInvalid");
+    return;
+  }
+
+  selectedEvent = matchedEvent;
+  privateCodeInput.value = code;
+  privateAccessMessage.textContent = t("privateAccessSuccess");
+  showDetailsView();
+}
+
 async function saveRegistration(event) {
+  // Creează înscrierea efectivă și actualizează counters local/remote.
   if (event) event.preventDefault();
   if (!requireLogin()) return;
 
@@ -1537,12 +1613,14 @@ sendSupportMessageButton.addEventListener("click", sendSupportMessage);
 changePasswordButton.addEventListener("click", changePassword);
 registerButton.addEventListener("click", showRegisterView);
 submitButton.addEventListener("click", saveRegistration);
+privateAccessButton.addEventListener("click", unlockPrivateEventByCode);
+privateAccessCodeInput.addEventListener("input", () => cleanPrivateCodeInput(privateAccessCodeInput, privateAccessMessage));
 privateCodeInput.addEventListener("input", () => {
-  privateCodeInput.value = privateCodeInput.value.replace(/\D/g, "").slice(0, 6);
-  privateCodeMessage.textContent = "";
+  cleanPrivateCodeInput(privateCodeInput, privateCodeMessage);
 });
 
 async function startApp() {
+  // Bootstrap-ul aplicației: setări, sesiune user, profil, evenimente și ruta inițială.
   loadSettings();
   await loadSupabaseSession();
   await loadProfileFromSupabase();
