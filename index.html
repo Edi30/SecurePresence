@@ -303,8 +303,11 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20260521-sync"></script>
-  <script src="events-data.js?v=20260521-sync"></script>
-  <script src="app.js?v=20260521-sync"></script>
+  <script>
+    const securePresenceCacheKey = Date.now();
+    document.write(`<script src="supabase-config.js?v=${securePresenceCacheKey}"><\/script>`);
+    document.write(`<script src="events-data.js?v=${securePresenceCacheKey}"><\/script>`);
+    document.write(`<script src="app.js?v=${securePresenceCacheKey}"><\/script>`);
+  </script>
 </body>
 </html>
