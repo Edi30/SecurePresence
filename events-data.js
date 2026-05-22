@@ -1,10 +1,10 @@
 window.SECURE_PRESENCE_DATA = {
   "events": [
     {
-      "id": "privat",
-      "name": "privat",
+      "id": "ertyuio",
+      "name": "ertyuio",
       "description": "",
-      "date": "2026-05-29",
+      "date": "2026-05-30",
       "time": "09:00:00",
       "location": "",
       "status": "Upcoming",
@@ -13,16 +13,31 @@ window.SECURE_PRESENCE_DATA = {
       "checked": 0,
       "available": 0,
       "private": true,
+      "access_code": "562178"
+    },
+    {
+      "id": "privat",
+      "name": "privat",
+      "description": "",
+      "date": "2026-05-29",
+      "time": "09:00:00",
+      "location": "",
+      "status": "Upcoming",
+      "total": 2,
+      "registered": 2,
+      "checked": 2,
+      "available": 0,
+      "private": true,
       "access_code": "949102"
     },
     {
       "id": "olimpiada-7",
       "name": "Olimpiada",
       "description": "Info",
-      "date": "2026-05-21",
-      "time": "11:00:00",
+      "date": "2026-05-22",
+      "time": "14:00:00",
       "location": "Putna",
-      "status": "Done",
+      "status": "Today",
       "total": 1,
       "registered": 1,
       "checked": 0,

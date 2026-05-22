@@ -463,6 +463,23 @@ function mapSupabaseEvent(event) {
   };
 }
 
+function findExportedPrivateEventByCode(code) {
+  // Caută în fișierul exportat de aplicația desktop, inclusiv când Supabase ascunde eventurile private.
+  return exportedEvents.find((item) => item.private && String(item.access_code || "") === code) || null;
+}
+
+function mergeEventIntoList(event) {
+  const existingIndex = events.findIndex((item) => item.id === event.id);
+  if (existingIndex >= 0) {
+    events[existingIndex] = {
+      ...events[existingIndex],
+      ...event
+    };
+    return;
+  }
+  events.push(event);
+}
+
 async function loadSupabaseSession() {
   if (!supabaseClient) return;
 
@@ -1431,6 +1448,16 @@ async function verifyPrivateEventAccess() {
     return false;
   }
 
+  if (String(selectedEvent.access_code || "") === code) {
+    if (supabaseClient && currentUser.id) {
+      await supabaseClient.rpc("grant_private_event_access", {
+        p_event_id: selectedEvent.id,
+        p_access_code: code
+      });
+    }
+    return true;
+  }
+
   if (supabaseClient && currentUser.id) {
     const { data, error } = await supabaseClient.rpc("grant_private_event_access", {
       p_event_id: selectedEvent.id,
@@ -1469,8 +1496,11 @@ async function unlockPrivateEventByCode(event) {
     return;
   }
 
-  const matchedLocalEvent = events.find((item) => item.private && String(item.access_code || "") === code);
+  const matchedLocalEvent =
+    events.find((item) => item.private && String(item.access_code || "") === code) ||
+    findExportedPrivateEventByCode(code);
   if (matchedLocalEvent) {
+    mergeEventIntoList(matchedLocalEvent);
     selectedEvent = matchedLocalEvent;
     privateCodeInput.value = code;
     privateAccessMessage.textContent = t("privateAccessSuccess");
